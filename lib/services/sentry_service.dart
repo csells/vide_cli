@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:nocterm/nocterm.dart';
+import 'package:parott/services/posthog_service.dart';
 import 'package:sentry/sentry.dart';
 
 class SentryService {
@@ -24,6 +25,7 @@ class SentryService {
     NoctermError.onError = (details) {
       // Report to Sentry
       Sentry.captureException(details.exception, stackTrace: details.stack);
+      PostHogService.errorOccurred(details.exception.runtimeType.toString());
       // Still log to console
       NoctermError.dumpErrorToConsole(details);
     };
@@ -34,5 +36,6 @@ class SentryService {
   /// Capture an exception manually
   static Future<void> captureException(dynamic exception, {dynamic stackTrace}) async {
     await Sentry.captureException(exception, stackTrace: stackTrace);
+    PostHogService.errorOccurred(exception.runtimeType.toString());
   }
 }

@@ -8,6 +8,7 @@ import 'package:parott/services/parott_config_manager.dart';
 import 'package:parott/modules/agent_network/state/agent_networks_state_notifier.dart';
 import 'package:parott/hook_handler.dart';
 import 'package:parott/services/sentry_service.dart';
+import 'package:parott/services/posthog_service.dart';
 
 void main(List<String> args) async {
   // Check for --hook flag - run hook handler and exit
@@ -20,8 +21,12 @@ void main(List<String> args) async {
   // Initialize Sentry and set up nocterm error handler
   await SentryService.init();
 
-  // Initialize global config manager
+  // Initialize global config manager (must be before PostHog)
   ParottConfigManager().initialize();
+
+  // Initialize PostHog analytics
+  await PostHogService.init();
+  PostHogService.appStarted();
 
   // Clean up stale hook files from previous sessions
   await PermissionService.cleanupStaleFiles();

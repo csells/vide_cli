@@ -5,6 +5,7 @@
 log.txt
 
 parott
+vide
 
 # .parott/ directory is now stored globally, no longer needed in .gitignore
 test_project/

@@ -1,6 +1,7 @@
 import 'package:claude_api/claude_api.dart';
 import 'package:nocterm_riverpod/nocterm_riverpod.dart';
 import 'package:parott/modules/agent_network/service/claude_manager.dart';
+import 'package:parott/services/posthog_service.dart';
 import 'package:parott/modules/agent_network/models/agent_id.dart';
 import 'package:parott/modules/agent_network/models/agent_metadata.dart';
 import 'package:parott/modules/agent_network/models/agent_network.dart';
@@ -94,6 +95,9 @@ class AgentNetworkManager extends StateNotifier<AgentNetworkState> {
 
     // Persist the network
     await ref.read(agentNetworkPersistenceManagerProvider).saveNetwork(network);
+
+    // Track analytics
+    PostHogService.conversationStarted();
 
     // Start the main agent
     final mainAgentConfig = MainAgentConfig.create();
@@ -252,6 +256,9 @@ class AgentNetworkManager extends StateNotifier<AgentNetworkState> {
 
     // Add agent to network with metadata
     await addAgent(AgentIdAndClaudeConfig(agentId: newAgentId, config: config), metadata);
+
+    // Track analytics
+    PostHogService.agentSpawned(agentType.name);
 
     // Prepend context about who spawned this agent
     final contextualPrompt = '''[SPAWNED BY AGENT: $spawnedBy]
