@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:path/path.dart' as path;
 import 'package:riverpod/riverpod.dart';
+import '../../permissions/permission_scope.dart';
 import '../models/agent_status.dart';
 import '../service/agent_network_manager.dart';
 import 'agent_status_manager.dart';
@@ -11,64 +13,137 @@ final projectNameProvider = Provider<String>((ref) {
   return path.basename(Directory.current.path);
 });
 
-/// Provides the aggregated console title based on the status of all agents in the network.
-///
-/// Format: "ProjectName <emoji>"
-///
-/// Status aggregation logic (priority order):
-/// - If ANY agent has `waitingForUser` → ❓ (most actionable)
-/// - If ANY agent has `working` or `waitingForAgent` → ⚡
-/// - If ALL agents are `idle` → ✓
-final consoleTitleProvider = Provider<String>((ref) {
-  final projectName = ref.watch(projectNameProvider);
+/// Braille spinner frames for animated title
+const _brailleFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+
+/// Animation interval for braille spinner (slower than component spinners)
+const _animationInterval = Duration(milliseconds: 250);
+
+/// State for the animated console title
+class ConsoleTitleState {
+  final int frameIndex;
+
+  const ConsoleTitleState({this.frameIndex = 0});
+
+  ConsoleTitleState copyWith({int? frameIndex}) {
+    return ConsoleTitleState(frameIndex: frameIndex ?? this.frameIndex);
+  }
+
+  String get currentFrame => _brailleFrames[frameIndex % _brailleFrames.length];
+}
+
+/// State notifier that manages the braille animation timer
+class ConsoleTitleNotifier extends StateNotifier<ConsoleTitleState> {
+  Timer? _animationTimer;
+
+  ConsoleTitleNotifier() : super(const ConsoleTitleState());
+
+  /// Start the animation timer
+  void startAnimation() {
+    if (_animationTimer != null) return; // Already running
+
+    _animationTimer = Timer.periodic(_animationInterval, (_) {
+      state = state.copyWith(
+        frameIndex: (state.frameIndex + 1) % _brailleFrames.length,
+      );
+    });
+  }
+
+  /// Stop the animation timer
+  void stopAnimation() {
+    _animationTimer?.cancel();
+    _animationTimer = null;
+    // Reset to first frame when stopped
+    state = const ConsoleTitleState();
+  }
+
+  @override
+  void dispose() {
+    _animationTimer?.cancel();
+    super.dispose();
+  }
+}
+
+/// Provider for the animation state notifier
+final consoleTitleNotifierProvider =
+    StateNotifierProvider<ConsoleTitleNotifier, ConsoleTitleState>((ref) {
+  return ConsoleTitleNotifier();
+});
+
+/// Aggregated status from all agents
+enum _AggregatedStatus {
+  needsAttention, // waitingForUser OR permission pending
+  working, // working or waitingForAgent
+  idle, // all idle
+}
+
+/// Determines the aggregated status across all agents and permission state
+_AggregatedStatus _getAggregatedStatus(Ref ref) {
   final networkState = ref.watch(agentNetworkManagerProvider);
   final agentIds = networkState.agentIds;
+  final permissionState = ref.watch(permissionStateProvider);
+
+  // Check if there's a pending permission request
+  if (permissionState.current != null) {
+    return _AggregatedStatus.needsAttention;
+  }
 
   // No agents = Idle
   if (agentIds.isEmpty) {
-    return '$projectName ✓';
+    return _AggregatedStatus.idle;
   }
 
-  // Collect all agent statuses
-  bool hasWaitingForUser = false;
   bool hasWorking = false;
-  bool allIdle = true;
 
   for (final agentId in agentIds) {
     final status = ref.watch(agentStatusProvider(agentId));
 
     switch (status) {
       case AgentStatus.waitingForUser:
-        hasWaitingForUser = true;
-        allIdle = false;
-        break;
+        return _AggregatedStatus.needsAttention;
       case AgentStatus.working:
       case AgentStatus.waitingForAgent:
         hasWorking = true;
-        allIdle = false;
         break;
       case AgentStatus.idle:
         // Keep checking other agents
         break;
     }
-
-    // Early exit if we found waitingForUser (highest priority)
-    if (hasWaitingForUser) {
-      break;
-    }
   }
 
-  // Return based on priority
-  if (hasWaitingForUser) {
-    return '$projectName ❓';
-  }
   if (hasWorking) {
-    return '$projectName ⚡';
-  }
-  if (allIdle) {
-    return '$projectName ✓';
+    return _AggregatedStatus.working;
   }
 
-  // Fallback (shouldn't happen)
-  return '$projectName ✓';
+  return _AggregatedStatus.idle;
+}
+
+/// Provides the aggregated console title based on the status of all agents in the network.
+///
+/// Format: "ProjectName <emoji>"
+///
+/// Status aggregation logic (priority order):
+/// - If ANY agent has `waitingForUser` OR permission pending → ❓ (most actionable)
+/// - If ANY agent has `working` or `waitingForAgent` → animated braille spinner
+/// - If ALL agents are `idle` → ✓
+final consoleTitleProvider = Provider<String>((ref) {
+  final projectName = ref.watch(projectNameProvider);
+  final aggregatedStatus = _getAggregatedStatus(ref);
+  final notifier = ref.watch(consoleTitleNotifierProvider.notifier);
+  final titleState = ref.watch(consoleTitleNotifierProvider);
+
+  // Manage animation based on status
+  switch (aggregatedStatus) {
+    case _AggregatedStatus.needsAttention:
+      notifier.stopAnimation();
+      return '$projectName ❓';
+
+    case _AggregatedStatus.working:
+      notifier.startAnimation();
+      return '$projectName ${titleState.currentFrame}';
+
+    case _AggregatedStatus.idle:
+      notifier.stopAnimation();
+      return '$projectName ✓';
+  }
 });
