@@ -5,7 +5,6 @@ import 'package:parott/modules/mcp/git/git_server.dart';
 import 'package:parott/modules/mcp/models/mcp_server_type.dart';
 import 'package:parott/modules/mcp/task_management/task_management_server.dart';
 import 'package:parott/modules/memory/memory_mcp_server.dart';
-import 'package:parott/modules/setup/dart_mcp_manager.dart';
 import 'package:riverpod/riverpod.dart';
 
 import '../agent_network/models/agent_id.dart';

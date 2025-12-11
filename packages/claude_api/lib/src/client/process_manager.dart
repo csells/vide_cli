@@ -53,6 +53,49 @@ class ProcessManager {
         }
       }
 
+      // Add Dart MCP server (uses stdio transport, Claude handles it)
+      print('[ProcessManager] VERBOSE: Adding Dart MCP server configuration...');
+      mcpServersConfig['dart'] = {
+        'command': 'dart',
+        'args': ['mcp-server']
+      };
+      print('[ProcessManager] VERBOSE: ✓ Added Dart MCP server');
+
+      // Add Dart MCP tool names to allowed tools
+      final dartMcpToolNames = [
+        'add_roots',
+        'analyze_files',
+        'connect_dart_tooling_daemon',
+        'create_project',
+        'dart_fix',
+        'dart_format',
+        'flutter_driver',
+        'get_active_location',
+        'get_app_logs',
+        'get_runtime_errors',
+        'get_selected_widget',
+        'get_widget_tree',
+        'hot_reload',
+        'hot_restart',
+        'hover',
+        'launch_app',
+        'list_devices',
+        'list_running_apps',
+        'pub',
+        'pub_dev_search',
+        'read_package_uris',
+        'remove_roots',
+        'resolve_workspace_symbol',
+        'run_tests',
+        'set_widget_selection_mode',
+        'signature_help',
+        'stop_app',
+      ];
+      for (final toolName in dartMcpToolNames) {
+        mcpToolNames.add('mcp__dart__$toolName');
+      }
+      print('[ProcessManager] VERBOSE: Added ${dartMcpToolNames.length} Dart MCP tools to allowed list');
+
       // Create the complete configuration with mcpServers wrapper
       final fullConfig = {'mcpServers': mcpServersConfig};
       print('[ProcessManager] VERBOSE: Full MCP config: ${jsonEncode(fullConfig)}');

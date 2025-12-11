@@ -7,9 +7,6 @@ import 'package:parott/modules/agent_network/network_execution_page.dart';
 import 'package:parott/modules/agent_network/components/network_summary_component.dart';
 import 'package:parott/modules/agent_network/state/agent_networks_state_notifier.dart';
 import 'package:parott/modules/agent_network/service/agent_network_manager.dart';
-import 'package:parott/modules/setup/dart_mcp_manager.dart';
-import 'package:parott/utils/project_detector.dart';
-import 'package:parott/modules/setup/dart_mcp_setup_dialog.dart';
 import 'package:parott/modules/memory/memories_viewer_page.dart';
 import 'package:path/path.dart' as path;
 
@@ -25,14 +22,11 @@ class NetworksListPage extends StatefulComponent {
 }
 
 class _NetworksListPageState extends State<NetworksListPage> {
-  DartMcpStatus? dartMcpStatus;
-  bool isDartProject = false;
   int totalMemories = 0;
 
   @override
   void initState() {
     super.initState();
-    _loadDartMcpStatus();
     _loadMemoryCount();
   }
 
@@ -47,20 +41,6 @@ class _NetworksListPageState extends State<NetworksListPage> {
       setState(() {
         totalMemories = count;
       });
-    }
-  }
-
-  Future<void> _loadDartMcpStatus() async {
-    final currentDir = Directory.current.path;
-    isDartProject = ProjectDetector.isDartProject(currentDir);
-
-    if (isDartProject) {
-      final status = await DartMcpManager.getStatus(currentDir);
-      if (mounted) {
-        setState(() {
-          dartMcpStatus = status;
-        });
-      }
     }
   }
 
@@ -83,14 +63,10 @@ class _NetworksListPageState extends State<NetworksListPage> {
             style: TextStyle(decoration: TextDecoration.underline, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 1),
-          // MCP Servers and Memory row
+          // Memory row
           Focusable(
             focused: true,
             onKeyEvent: (event) {
-              if (isDartProject && dartMcpStatus != null && event.logicalKey == LogicalKey.keyM) {
-                DartMcpSetupDialog.show(context, dartMcpStatus!);
-                return true;
-              }
               if (event.logicalKey == LogicalKey.keyV) {
                 MemoriesViewerPage.push(context);
                 return true;
@@ -100,10 +76,6 @@ class _NetworksListPageState extends State<NetworksListPage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (isDartProject && dartMcpStatus != null) ...[
-                  _McpBadge(name: 'Dart MCP', status: dartMcpStatus!),
-                  SizedBox(width: 2),
-                ],
                 _MemoryBadge(count: totalMemories),
               ],
             ),
@@ -111,7 +83,7 @@ class _NetworksListPageState extends State<NetworksListPage> {
           SizedBox(height: 1),
           // Help text
           Text(
-            'Esc: home | Backspace×2: delete${isDartProject && dartMcpStatus != null ? ' | M: MCP setup' : ''} | V: view memories',
+            'Esc: home | Backspace×2: delete | V: view memories',
             style: TextStyle(color: Colors.grey),
           ),
           SizedBox(height: 2),
@@ -214,49 +186,6 @@ class _NetworksListContentState extends State<_NetworksListContent> {
           ],
         ],
       ),
-    );
-  }
-}
-
-/// MCP server status badge
-class _McpBadge extends StatelessComponent {
-  const _McpBadge({required this.name, required this.status});
-
-  final String name;
-  final DartMcpStatus status;
-
-  @override
-  Component build(BuildContext context) {
-    // Determine badge color based on status
-    Color bgColor;
-    if (status.isFullyEnabled) {
-      bgColor = Colors.green;
-    } else if (status.canBeEnabled && !status.isMcpConfigured) {
-      bgColor = Colors.yellow;
-    } else {
-      bgColor = Colors.red;
-    }
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: EdgeInsets.symmetric(horizontal: 1),
-          decoration: BoxDecoration(color: Colors.grey),
-          child: Text(name, style: TextStyle(color: Colors.white)),
-        ),
-        Container(
-          padding: EdgeInsets.symmetric(horizontal: 1),
-          decoration: BoxDecoration(color: bgColor),
-          child: Text(
-            status.statusMessage,
-            style: TextStyle(
-              color: bgColor == Colors.yellow ? Colors.black : Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

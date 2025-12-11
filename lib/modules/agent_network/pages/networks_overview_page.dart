@@ -8,7 +8,6 @@ import 'package:parott/modules/agent_network/service/agent_network_manager.dart'
 import 'package:parott/modules/agent_network/state/agent_networks_state_notifier.dart';
 import 'package:parott/components/attachment_text_field.dart';
 import 'package:parott/utils/project_detector.dart';
-import 'package:parott/modules/setup/dart_mcp_manager.dart';
 import 'package:path/path.dart' as path;
 
 class NetworksOverviewPage extends StatefulComponent {
@@ -20,7 +19,6 @@ class NetworksOverviewPage extends StatefulComponent {
 
 class _NetworksOverviewPageState extends State<NetworksOverviewPage> {
   ProjectType? projectType;
-  DartMcpStatus? dartMcpStatus;
 
   @override
   void initState() {
@@ -32,17 +30,9 @@ class _NetworksOverviewPageState extends State<NetworksOverviewPage> {
     final currentDir = Directory.current.path;
     final detectedType = ProjectDetector.detectProjectType(currentDir);
 
-    DartMcpStatus? mcpStatus;
-    if (detectedType == ProjectType.dart ||
-        detectedType == ProjectType.flutter ||
-        detectedType == ProjectType.nocterm) {
-      mcpStatus = await DartMcpManager.getStatus(currentDir);
-    }
-
     if (mounted) {
       setState(() {
         projectType = detectedType;
-        dartMcpStatus = mcpStatus;
       });
     }
   }
@@ -88,15 +78,9 @@ class _NetworksOverviewPageState extends State<NetworksOverviewPage> {
                 style: TextStyle(decoration: TextDecoration.underline, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 1),
-              // Project info badges
+              // Project info badge
               if (projectType != null) ...[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _ProjectTypeBadge(projectType: projectType!),
-                    if (dartMcpStatus != null) ...[SizedBox(width: 2), _McpStatusBadge(status: dartMcpStatus!)],
-                  ],
-                ),
+                _ProjectTypeBadge(projectType: projectType!),
                 const SizedBox(height: 1),
               ],
               Container(
@@ -158,43 +142,3 @@ class _ProjectTypeBadge extends StatelessComponent {
   }
 }
 
-/// MCP status badge component
-class _McpStatusBadge extends StatelessComponent {
-  const _McpStatusBadge({required this.status});
-
-  final DartMcpStatus status;
-
-  @override
-  Component build(BuildContext context) {
-    Color bgColor;
-    if (status.isFullyEnabled) {
-      bgColor = Colors.green;
-    } else if (status.canBeEnabled && !status.isMcpConfigured) {
-      bgColor = Colors.yellow;
-    } else {
-      bgColor = Colors.red;
-    }
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: EdgeInsets.symmetric(horizontal: 1),
-          decoration: BoxDecoration(color: Colors.grey),
-          child: Text('Dart MCP', style: TextStyle(color: Colors.white)),
-        ),
-        Container(
-          padding: EdgeInsets.symmetric(horizontal: 1),
-          decoration: BoxDecoration(color: bgColor),
-          child: Text(
-            status.statusMessage,
-            style: TextStyle(
-              color: bgColor == Colors.yellow ? Colors.black : Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
