@@ -25,11 +25,12 @@ class TaskManagementServer extends McpServerBase {
         super(name: serverName, version: '1.0.0');
 
   @override
-  List<String> get toolNames => ['setTaskName'];
+  List<String> get toolNames => ['setTaskName', 'setAgentTaskName'];
 
   @override
   void registerTools(McpServer server) {
     _registerSetTaskNameTool(server);
+    _registerSetAgentTaskNameTool(server);
   }
 
   void _registerSetTaskNameTool(McpServer server) {
@@ -60,6 +61,39 @@ class TaskManagementServer extends McpServerBase {
           return CallToolResult.fromContent(content: [TextContent(text: 'Task name updated to: "$taskName"')]);
         } catch (e) {
           return CallToolResult.fromContent(content: [TextContent(text: 'Error updating task name: $e')]);
+        }
+      },
+    );
+  }
+
+  void _registerSetAgentTaskNameTool(McpServer server) {
+    server.tool(
+      'setAgentTaskName',
+      description:
+          'Set or update the current task name for this agent. Use this to indicate what specific task this agent is currently working on. This is separate from the overall task name (setTaskName) which describes the entire network\'s goal.',
+      toolInputSchema: ToolInputSchema(
+        properties: {
+          'taskName': {
+            'type': 'string',
+            'description':
+                'Clear, concise name describing what this agent is currently working on (e.g., "Researching auth patterns", "Implementing login form", "Running unit tests")',
+          },
+        },
+        required: ['taskName'],
+      ),
+      callback: ({args, extra}) async {
+        if (args == null) {
+          return CallToolResult.fromContent(content: [TextContent(text: 'Error: No arguments provided')]);
+        }
+
+        final taskName = args['taskName'] as String;
+
+        try {
+          await _ref.read(agentNetworkManagerProvider.notifier).updateAgentTaskName(callerAgentId, taskName);
+
+          return CallToolResult.fromContent(content: [TextContent(text: 'Agent task name updated to: "$taskName"')]);
+        } catch (e) {
+          return CallToolResult.fromContent(content: [TextContent(text: 'Error updating agent task name: $e')]);
         }
       },
     );

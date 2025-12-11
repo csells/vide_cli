@@ -82,6 +82,13 @@ class _RunningAgentBarItemState extends State<_RunningAgentBarItem> {
     };
   }
 
+  String _buildAgentDisplayName(AgentMetadata agent) {
+    if (agent.taskName != null && agent.taskName!.isNotEmpty) {
+      return '${agent.name} - ${agent.taskName}';
+    }
+    return agent.name;
+  }
+
   @override
   Component build(BuildContext context) {
     final status = context.watch(agentStatusProvider(component.agent.id));
@@ -103,7 +110,7 @@ class _RunningAgentBarItemState extends State<_RunningAgentBarItem> {
             padding: EdgeInsets.symmetric(horizontal: 1),
             decoration: BoxDecoration(color: Colors.grey),
             child: Text(
-              component.agent.name,
+              _buildAgentDisplayName(component.agent),
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: component.isSelected ? FontWeight.bold : null,

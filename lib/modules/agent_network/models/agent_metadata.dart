@@ -13,6 +13,7 @@ class AgentMetadata {
     this.spawnedBy,
     required this.createdAt,
     this.status = AgentStatus.idle,
+    this.taskName,
   });
 
   /// The unique identifier for this agent
@@ -33,6 +34,9 @@ class AgentMetadata {
   /// The current status of this agent
   final AgentStatus status;
 
+  /// The current task name for this agent (set via setAgentTaskName MCP tool)
+  final String? taskName;
+
   AgentMetadata copyWith({
     AgentId? id,
     String? name,
@@ -40,6 +44,7 @@ class AgentMetadata {
     AgentId? spawnedBy,
     DateTime? createdAt,
     AgentStatus? status,
+    String? taskName,
   }) {
     return AgentMetadata(
       id: id ?? this.id,
@@ -48,6 +53,7 @@ class AgentMetadata {
       spawnedBy: spawnedBy ?? this.spawnedBy,
       createdAt: createdAt ?? this.createdAt,
       status: status ?? this.status,
+      taskName: taskName ?? this.taskName,
     );
   }
 
@@ -59,6 +65,7 @@ class AgentMetadata {
       'spawnedBy': spawnedBy,
       'createdAt': createdAt.toIso8601String(),
       'status': status.toStringValue(),
+      'taskName': taskName,
     };
   }
 
@@ -70,6 +77,7 @@ class AgentMetadata {
       spawnedBy: json['spawnedBy'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
       status: _parseStatus(json['status'] as String?),
+      taskName: json['taskName'] as String?,
     );
   }
 

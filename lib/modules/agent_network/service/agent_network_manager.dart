@@ -212,6 +212,26 @@ class AgentNetworkManager extends StateNotifier<AgentNetworkState> {
     state = AgentNetworkState(currentNetwork: updatedNetwork);
   }
 
+  /// Update the task name of an agent in the current network
+  Future<void> updateAgentTaskName(AgentId agentId, String taskName) async {
+    final network = state.currentNetwork;
+    if (network == null) {
+      throw StateError('No active network to update agent task name in');
+    }
+
+    final updatedAgents = network.agents.map((agent) {
+      if (agent.id == agentId) {
+        return agent.copyWith(taskName: taskName);
+      }
+      return agent;
+    }).toList();
+
+    final updatedNetwork = network.copyWith(agents: updatedAgents, lastActiveAt: DateTime.now());
+    await ref.read(agentNetworkPersistenceManagerProvider).saveNetwork(updatedNetwork);
+
+    state = AgentNetworkState(currentNetwork: updatedNetwork);
+  }
+
   void sendMessage(AgentId agentId, Message message) {
     final claudeManager = ref.read(claudeProvider(agentId));
     claudeManager?.sendMessage(message);
