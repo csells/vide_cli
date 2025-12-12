@@ -7,12 +7,14 @@ import 'package:claude_api/claude_api.dart';
 import 'package:moondream_api/moondream_api.dart';
 import 'package:uuid/uuid.dart';
 import 'flutter_instance.dart';
+import 'synthetic_main_generator.dart';
 
 /// MCP server for managing Flutter application runtime instances
 class FlutterRuntimeServer extends McpServerBase {
   static const String serverName = 'flutter-runtime';
 
   final _instances = <String, FlutterInstance>{};
+  final _instanceWorkingDirs = <String, String>{}; // Track working dirs for cleanup
   final _uuid = const Uuid();
   MoondreamClient? _moondreamClient;
 
@@ -70,7 +72,7 @@ class FlutterRuntimeServer extends McpServerBase {
 
         try {
           // Parse command into parts
-          final commandParts = _parseCommand(command);
+          var commandParts = _parseCommand(command);
 
           // Validate that it's a flutter command
           if (commandParts.isEmpty || (commandParts.first != 'flutter' && commandParts.first != 'fvm')) {
@@ -78,6 +80,23 @@ class FlutterRuntimeServer extends McpServerBase {
               content: [TextContent(text: 'Error: Command must start with "flutter" or "fvm"')],
             );
           }
+
+          // Generate synthetic main file for runtime AI dev tools injection
+          print('🚀 [FlutterRuntimeServer] Generating synthetic main for runtime AI dev tools...');
+          final syntheticMainPath = await SyntheticMainGenerator.generate(
+            projectDir: workingDirectory,
+          );
+          print('🚀 [FlutterRuntimeServer] Synthetic main generated at: $syntheticMainPath');
+
+          // Inject -t flag to point to synthetic main (if not already present)
+          final originalCommand = commandParts.join(' ');
+          commandParts = _injectTargetFlag(commandParts, syntheticMainPath);
+          final modifiedCommand = commandParts.join(' ');
+          print('🚀 [FlutterRuntimeServer] Original command: $originalCommand');
+          print('🚀 [FlutterRuntimeServer] Modified command: $modifiedCommand');
+
+          // Track working directory for cleanup on stop
+          _instanceWorkingDirs[instanceId] = workingDirectory;
 
           // Start the process
           final process = await Process.start(
@@ -292,6 +311,12 @@ Instance ID: $instanceId
         try {
           await instance.stop();
           _instances.remove(instanceId);
+
+          // Clean up synthetic main file
+          final workingDir = _instanceWorkingDirs.remove(instanceId);
+          if (workingDir != null) {
+            await SyntheticMainGenerator.cleanup(workingDir);
+          }
 
           return CallToolResult.fromContent(
             content: [
@@ -1106,6 +1131,29 @@ For example:
     );
   }
 
+  /// Inject -t (target) flag into command to point to synthetic main
+  /// Handles the case where -t flag might already be present
+  List<String> _injectTargetFlag(List<String> command, String targetPath) {
+    // Check if -t or --target flag is already present
+    for (var i = 0; i < command.length; i++) {
+      if (command[i] == '-t' || command[i] == '--target') {
+        // Flag already present, don't add duplicate
+        return command;
+      }
+    }
+
+    final result = List<String>.from(command);
+
+    // Find 'run' command and insert -t flag after it
+    final runIndex = result.indexOf('run');
+    if (runIndex != -1) {
+      result.insert(runIndex + 1, '-t');
+      result.insert(runIndex + 2, targetPath);
+    }
+
+    return result;
+  }
+
   /// Parse command string into list of arguments
   /// Handles quoted strings properly
   List<String> _parseCommand(String command) {
@@ -1246,6 +1294,12 @@ For example:
       await instance.stop();
     }
     _instances.clear();
+
+    // Clean up all synthetic main files
+    for (final workingDir in _instanceWorkingDirs.values) {
+      await SyntheticMainGenerator.cleanup(workingDir);
+    }
+    _instanceWorkingDirs.clear();
 
     // Dispose Moondream client
     _moondreamClient?.dispose();

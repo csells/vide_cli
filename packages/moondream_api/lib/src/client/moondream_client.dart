@@ -9,6 +9,18 @@ import '../models/config.dart';
 import '../models/request.dart';
 import '../models/response.dart';
 
+// 🙏 Hey there! This is a shared API key for the Moondream vision service.
+// It has a low rate limit and is meant for testing/demos.
+// Please don't abuse it - if you need more capacity, get your own key at moondream.ai
+// Thanks for being awesome!
+
+const _visionServiceToken =
+    'ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnJaWGxmYVdRaU9pSTFZV1V3TkRZME5DMTFZak5oTFRRMU5tSXRZbU0wTVMwME9XUTVOR0V6WkdVeU9DSXNJbTl5WjE5cFpDSTZJa0poVmpoMk1YZ3dhRTk1T0VZMVVsRlZjRFpqU0RkU1J6ZFVjbnBYUVZwVklpd2lhV0YwSWpveE56WXhPVEl5TnpVeUxDSjJaWElpT2pGOS5QaktVOE1HRjlPeERuZzBZR0ZzMXpFSHFuZ2U2ZTBNYlgyajA0c0t6TzJN';
+
+String _getDefaultCredential() {
+  return utf8.decode(base64Decode(_visionServiceToken));
+}
+
 /// Client for interacting with Moondream Vision Language Model API
 class MoondreamClient {
   final MoondreamConfig config;
@@ -33,7 +45,8 @@ class MoondreamClient {
     MoondreamConfig? config,
     http.Client? httpClient,
   }) {
-    final apiKey = Platform.environment['MOONDREAM_API_KEY'];
+    final apiKey =
+        Platform.environment['MOONDREAM_API_KEY'] ?? _getDefaultCredential();
     final finalConfig = (config ?? MoondreamConfig.defaults()).copyWith(
       apiKey: apiKey,
     );

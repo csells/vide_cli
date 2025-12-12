@@ -4,6 +4,9 @@ import 'src/tap_extension.dart';
 import 'src/type_extension.dart';
 import 'src/scroll_extension.dart';
 import 'src/debug_overlay_wrapper.dart';
+import 'src/debug_binding.dart';
+
+export 'src/debug_binding.dart' show DebugWidgetsFlutterBinding;
 
 /// Initialize runtime AI dev tools and run the app
 ///
@@ -66,8 +69,31 @@ class RuntimeAiDevTools {
     _init();
   }
 
+  /// Initialize runtime AI dev tools for synthetic main usage.
+  ///
+  /// This initializes the custom binding that wraps the root widget,
+  /// and registers all service extensions.
+  ///
+  /// Call this BEFORE the user's main() is invoked in the synthetic main file.
+  ///
+  /// Example:
+  /// ```dart
+  /// // In synthetic main wrapper
+  /// import 'package:runtime_ai_dev_tools/runtime_ai_dev_tools.dart';
+  /// import 'user_main.dart' as user_app;
+  ///
+  /// void main() {
+  ///   RuntimeAiDevTools.initForSyntheticMain();
+  ///   user_app.main();
+  /// }
+  /// ```
+  static void initForSyntheticMain() {
+    DebugWidgetsFlutterBinding.ensureInitialized();
+    _init(skipBindingInit: true);
+  }
+
   /// Internal initialization
-  static void _init() {
+  static void _init({bool skipBindingInit = false}) {
     if (_initialized) {
       print('⚠️ [RuntimeAiDevTools] Already initialized, skipping');
       return;
@@ -75,7 +101,9 @@ class RuntimeAiDevTools {
 
     print('🔍 [RuntimeAiDevTools] Initializing...');
 
-    WidgetsFlutterBinding.ensureInitialized();
+    if (!skipBindingInit) {
+      WidgetsFlutterBinding.ensureInitialized();
+    }
 
     // Register service extensions immediately
     // Service extensions need to be registered before VM Service queries them

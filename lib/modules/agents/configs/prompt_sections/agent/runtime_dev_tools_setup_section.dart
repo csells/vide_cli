@@ -1,87 +1,22 @@
 import '../../../../../utils/system_prompt_builder.dart';
 
-/// Temporary section for runtime_ai_dev_tools setup instructions.
-/// This can be removed once the setup process is automated or no longer needed.
+/// Section explaining the automatic runtime AI dev tools injection.
+/// The setup is now fully automated via synthetic main generation.
 class RuntimeDevToolsSetupSection extends PromptSection {
   @override
   String build() {
     return '''
-### Runtime AI Dev Tools Setup (REQUIRED)
+### Runtime AI Dev Tools
 
-**BEFORE running any Flutter app for testing, you MUST set up `runtime_ai_dev_tools`.**
+The runtime AI dev tools are **automatically injected** when you start a Flutter app using the `flutterStart` tool. No manual setup is required.
 
-This package provides the service extensions needed for screenshots and tap simulation.
+**What happens automatically:**
+1. A synthetic main file is generated in `.dart_tool/parott_debug_main.dart`
+2. Your app is wrapped with a debug overlay for tap visualization
+3. Service extensions are registered for: screenshots, taps, typing, and scrolling
+4. The app is launched using `flutter run --target` pointing to the synthetic main
 
-#### Step 1: Check/Add Dependency
-
-Check the app's `pubspec.yaml` for the `runtime_ai_dev_tools` dependency:
-
-```yaml
-dependencies:
-  runtime_ai_dev_tools:
-    git:
-      url: https://github.com/Norbert515/vide_cli.git
-      path: packages/runtime_ai_dev_tools
-```
-
-If missing:
-1. Add it under `dependencies` in `pubspec.yaml`
-2. Run `flutter pub get` (or `fvm flutter pub get` for FVM projects)
-
-#### Step 2: Modify main.dart to Use runDebugApp
-
-Find the app's `main.dart` file and locate the `runApp()` call. Replace it with `runDebugApp()`:
-
-**Before:**
-```dart
-void main() {
-  runApp(const MyApp());
-}
-```
-
-**After:**
-```dart
-import 'package:runtime_ai_dev_tools/runtime_ai_dev_tools.dart';
-
-void main() {
-  runDebugApp(const MyApp());
-}
-```
-
-**Important patterns to handle:**
-- `runApp(MyApp())` → `runDebugApp(MyApp())`
-- `runApp(const MyApp())` → `runDebugApp(const MyApp())`
-- If there's `WidgetsFlutterBinding.ensureInitialized()` before `runApp`, keep it
-
-#### Step 3: Track Changes for Revert
-
-**CRITICAL:** You MUST track what you changed so you can revert later!
-
-Use memory to store original state:
-```
-memorySave(key: "original_main_dart", value: "[original content or description]")
-memorySave(key: "added_runtime_dep", value: "true/false")
-```
-
-#### Step 4: AFTER Testing - REVERT ALL CHANGES
-
-**CRITICAL:** When testing is finished, you MUST revert all changes:
-
-1. **Revert `main.dart`:** Change `runDebugApp()` back to `runApp()` and remove the import
-2. **Remove dependency:** Remove `runtime_ai_dev_tools` from `pubspec.yaml` if it wasn't there before
-3. **Run pub get:** Ensure dependencies are synced
-
-**Quick Checklist:**
-- [ ] Check if `runtime_ai_dev_tools` dependency exists in pubspec.yaml
-- [ ] Add dependency if missing (git: `https://github.com/Norbert515/vide_cli.git`, path: `packages/runtime_ai_dev_tools`)
-- [ ] Run `flutter pub get` / `fvm flutter pub get`
-- [ ] Find `runApp()` in `main.dart`
-- [ ] Add import: `import 'package:runtime_ai_dev_tools/runtime_ai_dev_tools.dart';`
-- [ ] Replace `runApp(...)` with `runDebugApp(...)`
-- [ ] Save original state to memory for revert
-- [ ] **After testing:** Revert `main.dart` changes
-- [ ] **After testing:** Remove dependency if it wasn't there originally
-- [ ] **After testing:** Run pub get to sync
+**Important:** The project must have `runtime_ai_dev_tools` as a dependency in `pubspec.yaml`.
 ''';
   }
 }
