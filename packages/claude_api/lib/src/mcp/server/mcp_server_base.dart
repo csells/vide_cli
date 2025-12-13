@@ -50,8 +50,7 @@ abstract class McpServerBase {
         ),
       );
 
-      // Start the transport and connect to MCP server
-      await _httpTransport!.start();
+      // Connect to MCP server (this internally starts the transport)
       await _mcpServer!.connect(_httpTransport!);
 
       // Create HTTP server
