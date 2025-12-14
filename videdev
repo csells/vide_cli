@@ -1,0 +1,14 @@
+#!/bin/bash
+# videdev - Development version of vide with VM services enabled
+# Runs the local bin/vide.dart with --enable-vm-service
+
+# Resolve symlinks to get the real script location
+SOURCE="${BASH_SOURCE[0]}"
+while [ -L "$SOURCE" ]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+
+exec dart run --enable-vm-service "$SCRIPT_DIR/bin/vide.dart" "$@"
