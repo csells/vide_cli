@@ -38,10 +38,8 @@ class _NetworksOverviewPageState extends State<NetworksOverviewPage> {
   }
 
   void _handleSubmit(Message message) async {
-    final goal = message.text;
-
-    // Start a new agent network with the goal
-    final network = await context.read(agentNetworkManagerProvider.notifier).startNew(goal);
+    // Start a new agent network with the full message (preserves attachments)
+    final network = await context.read(agentNetworkManagerProvider.notifier).startNew(message);
 
     // Update the networks list
     context.read(agentNetworksStateNotifierProvider.notifier).upsertNetwork(network);

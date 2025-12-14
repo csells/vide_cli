@@ -67,8 +67,8 @@ class AgentNetworkManager extends StateNotifier<AgentNetworkState> {
   /// Counter for generating "Task X" names
   static int _taskCounter = 0;
 
-  /// Start a new agent network with the given goal
-  Future<AgentNetwork> startNew(String goal) async {
+  /// Start a new agent network with the given initial message
+  Future<AgentNetwork> startNew(Message initialMessage) async {
     final networkId = const Uuid().v4();
     final mainAgentId = const Uuid().v4();
 
@@ -108,8 +108,8 @@ class AgentNetworkManager extends StateNotifier<AgentNetworkState> {
 
     state = AgentNetworkState(currentNetwork: network);
 
-    // Send the goal as the initial message
-    ref.read(claudeProvider(mainAgentId))?.sendMessage(Message.text(goal));
+    // Send the initial message (preserves attachments)
+    ref.read(claudeProvider(mainAgentId))?.sendMessage(initialMessage);
 
     return network;
   }
