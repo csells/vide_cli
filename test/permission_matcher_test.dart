@@ -423,8 +423,8 @@ void main() {
     test('matches MCP tool without arguments', () {
       expect(
         PermissionMatcher.matches(
-          'mcp__dart__analyze_files',
-          'mcp__dart__analyze_files',
+          'mcp__dart__dart_fix',
+          'mcp__dart__dart_fix',
           {},
         ),
         isTrue,

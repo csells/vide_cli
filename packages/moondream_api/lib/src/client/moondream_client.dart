@@ -15,7 +15,7 @@ import '../models/response.dart';
 // Thanks for being awesome!
 
 const _visionServiceToken =
-    'ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnJaWGxmYVdRaU9pSTFZV1V3TkRZME5DMTFZak5oTFRRMU5tSXRZbU0wTVMwME9XUTVOR0V6WkdVeU9DSXNJbTl5WjE5cFpDSTZJa0poVmpoMk1YZ3dhRTk1T0VZMVVsRlZjRFpqU0RkU1J6ZFVjbnBYUVZwVklpd2lhV0YwSWpveE56WXhPVEl5TnpVeUxDSjJaWElpT2pGOS5QaktVOE1HRjlPeERuZzBZR0ZzMXpFSHFuZ2U2ZTBNYlgyajA0c0t6TzJN';
+    'ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnJaWGxmYVdRaU9pSTFZV1V3TkRZME5DMDFZak5oTFRRMU5tSXRZbU0wTVMwME9XUTVOalF4TTJSbE1qZ2lMQ0p2Y21kZmFXUWlPaUpDWVZZNGRqRjRNR2hQZVRoR05WSlJWWEEyWTBnM1VrYzNWSEo2VjBGYVZTSXNJbWxoZENJNk1UYzJNVGt5TWpjMU1pd2lkbVZ5SWpveGZRLlBqS1U4TUdGOU94RG5nMFlHRnMxekVIcW5nZTZlME1iWDJqMDRzS3pPMk0=';
 
 String _getDefaultCredential() {
   return utf8.decode(base64Decode(_visionServiceToken));
@@ -194,14 +194,42 @@ class MoondreamClient {
         print('Response body: ${response.body}');
       }
 
+      // Parse response body - handle both JSON and plain text
+      dynamic decoded;
+      try {
+        decoded = jsonDecode(response.body);
+      } on FormatException {
+        // Response is not valid JSON - use raw body as error message
+        throw MoondreamException(
+          message: response.body.isNotEmpty ? response.body : 'Empty response',
+          statusCode: response.statusCode,
+        );
+      }
+
       // Handle error responses
       if (response.statusCode != 200) {
-        final errorBody = jsonDecode(response.body) as Map<String, dynamic>;
-        if (errorBody.containsKey('error')) {
-          throw MoondreamException.fromJson(
-            errorBody['error'] as Map<String, dynamic>,
+        // If decoded is a string, use it directly as the error message
+        if (decoded is String) {
+          throw MoondreamException(
+            message: decoded,
             statusCode: response.statusCode,
           );
+        }
+
+        final errorBody = decoded as Map<String, dynamic>;
+        if (errorBody.containsKey('error')) {
+          final errorValue = errorBody['error'];
+          if (errorValue is Map<String, dynamic>) {
+            throw MoondreamException.fromJson(
+              errorValue,
+              statusCode: response.statusCode,
+            );
+          } else if (errorValue is String) {
+            throw MoondreamException(
+              message: errorValue,
+              statusCode: response.statusCode,
+            );
+          }
         }
 
         throw MoondreamException(
@@ -210,7 +238,14 @@ class MoondreamClient {
         );
       }
 
-      return jsonDecode(response.body) as Map<String, dynamic>;
+      // Success response - should be a Map
+      if (decoded is String) {
+        throw MoondreamException(
+          message: 'Unexpected string response: $decoded',
+        );
+      }
+
+      return decoded as Map<String, dynamic>;
     } on MoondreamException {
       // Re-throw Moondream exceptions as-is
       rethrow;

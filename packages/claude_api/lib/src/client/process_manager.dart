@@ -64,7 +64,7 @@ class ProcessManager {
       // Add Dart MCP tool names to allowed tools
       final dartMcpToolNames = [
         'add_roots',
-        'analyze_files',
+        // 'analyze_files' removed - floods context with too much output (all lint hints, no filtering)
         'connect_dart_tooling_daemon',
         'create_project',
         'dart_fix',
@@ -109,9 +109,9 @@ class ProcessManager {
 
       args.addAll(['--mcp-config', tempFile.path]);
 
-      // Add MCP tools to allowed tools list
+      // Add MCP tools to allowed tools list (comma-separated)
       if (mcpToolNames.isNotEmpty) {
-        args.addAll(['--allowed-tools', ...mcpToolNames]);
+        args.addAll(['--allowed-tools', mcpToolNames.join(',')]);
         print('[ProcessManager] VERBOSE: Added ${mcpToolNames.length} tools to allowed-tools');
       }
 

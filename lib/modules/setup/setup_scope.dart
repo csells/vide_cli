@@ -54,6 +54,14 @@ class _SetupScopeState extends State<SetupScope> {
 
       final isHookInstalled = await settingsManager.isHookInstalled();
 
+      if (isHookInstalled) {
+        // Hook is installed - check if it's up to date and auto-update if needed
+        final wasUpdated = await settingsManager.ensureHookUpToDate();
+        if (wasUpdated) {
+          // Hook was updated silently - no user action needed
+        }
+      }
+
       setState(() {
         _isSetup = isHookInstalled;
         _isChecking = false;

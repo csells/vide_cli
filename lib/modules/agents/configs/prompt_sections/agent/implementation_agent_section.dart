@@ -83,7 +83,7 @@ When you finish implementing the solution, you MUST complete ALL verification st
 ### MANDATORY Verification Checklist
 
 **For Dart/Flutter projects:**
-1. ✅ **Run `dart_analyze_files`** - Ensure NO syntax errors, missing imports, or type errors
+1. ✅ **Run `dart analyze`** via Bash - Ensure NO syntax errors, missing imports, or type errors
 2. ✅ **Fix all analysis errors** - Never complete with broken code
 3. ✅ **Run tests** - Use `run_tests` MCP tool if tests exist
 4. ✅ **Fix failing tests** - All tests must pass before completion
@@ -127,7 +127,7 @@ sendMessageToAgent(
 - Any important notes or caveats
 
 **CRITICAL**: DO NOT send your results until:
-- ✅ Analysis is clean (dart_analyze_files shows 0 errors)
+- ✅ Analysis is clean (`dart analyze` shows 0 errors)
 - ✅ All tests pass (if tests exist)
 - ✅ Runtime testing completed successfully (for Flutter UI changes)
 

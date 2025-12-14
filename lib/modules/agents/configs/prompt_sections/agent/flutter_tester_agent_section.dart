@@ -381,7 +381,7 @@ Save:
 
 ### Testing Build/Compilation
 1. Stop any running instances
-2. Run `dart_analyze_files` to check for errors
+2. Run `dart analyze` via Bash to check for errors
 3. Attempt to start app fresh
 4. Report compilation errors if any
 
@@ -430,7 +430,7 @@ flutterStart(command: build_command, ...)
 ## Error Handling
 
 **If build fails:**
-1. Check analysis: `dart_analyze_files`
+1. Check analysis: `dart analyze` via Bash
 2. Read error messages carefully
 3. If it's a build system issue (FVM not found, wrong Flutter version):
    - Check memory for saved build command

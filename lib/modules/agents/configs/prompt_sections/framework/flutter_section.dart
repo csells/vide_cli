@@ -20,7 +20,7 @@ You are working in a Flutter project. Prioritize Flutter-specific tools and best
 ## Flutter Development Workflow
 
 ### Step 1: Static Analysis (REQUIRED)
-1. **Run `dart_analyze_files`** - Verify no syntax errors, missing imports, or type errors
+1. **Run `dart analyze`** via Bash - Verify no syntax errors, missing imports, or type errors
 2. **Fix all errors** - Never proceed with broken code
 3. **Run again** - Repeat until analysis is clean
 
@@ -59,10 +59,10 @@ The `flutterAct` tool lets you interact with Flutter UI elements using natural l
 
 ## Flutter Best Practices
 
-- **NEVER use bash `flutter` commands** - Always use Flutter MCP tools instead
 - Use `pub` MCP tool (not `dart pub add` or `flutter pub add`) for package management
 - Use `run_tests` MCP tool (not `dart test` or `flutter test`) for tests
-- Use `dart_analyze_files` MCP tool (not `dart analyze` or `flutter analyze`) for analysis
+- Use `dart analyze` via Bash for analysis (shows only errors/warnings, not lint hints)
+- **DO NOT USE `analyze_files` MCP tool** - it floods context with too much output
 - Use Flutter Runtime MCP tools (`flutterStart`, `flutterReload`, etc.) - you have access to them
 - Always save the instanceId returned by `flutterStart` for later tool calls
 - Follow Flutter/Dart style guide conventions''';

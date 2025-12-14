@@ -254,6 +254,38 @@ class PermissionService {
         }
       }
 
+      // Hardcoded deny list for problematic MCP tools
+      const hardcodedDenyList = [
+        'mcp__dart__analyze_files', // Floods context with too much output (all lint hints, no filtering)
+      ];
+
+      if (hardcodedDenyList.contains(hookRequest.toolName)) {
+        request.response
+          ..statusCode = 200
+          ..write(jsonEncode({
+            'decision': 'deny',
+            'reason': 'Blocked: ${hookRequest.toolName} floods context with too much output. Use `dart analyze` via Bash instead.',
+            'remember': false,
+          }))
+          ..close();
+        return;
+      }
+
+      // Auto-approve all vide MCP tools and TodoWrite
+      if (hookRequest.toolName.startsWith('mcp__vide-') ||
+          hookRequest.toolName.startsWith('mcp__flutter-runtime__') ||
+          hookRequest.toolName == 'TodoWrite') {
+        request.response
+          ..statusCode = 200
+          ..write(jsonEncode({
+            'decision': 'allow',
+            'reason': 'Auto-approved vide MCP tool',
+            'remember': false,
+          }))
+          ..close();
+        return;
+      }
+
       // Check deny list (highest priority)
       for (final pattern in settings.permissions.deny) {
         if (PermissionMatcher.matches(

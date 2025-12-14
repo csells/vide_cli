@@ -53,6 +53,10 @@ class LocalSettingsManager {
     }
   }
 
+  /// The current expected matcher pattern - update this when adding new tool types
+  static const String currentMatcherPattern =
+      'Write|Edit|Bash|MultiEdit|WebFetch|WebSearch|Read|mcp__.*';
+
   /// Check if our hook is installed
   Future<bool> isHookInstalled() async {
     final settings = await readSettings();
@@ -65,6 +69,81 @@ class LocalSettingsManager {
       if (hook.hooks.any((cmd) => _isOurHook(cmd.command))) {
         return true;
       }
+    }
+
+    return false;
+  }
+
+  /// Check if the installed hook is up to date (has correct matcher pattern)
+  Future<bool> isHookUpToDate() async {
+    final settings = await readSettings();
+
+    if (settings.hooks == null) {
+      return false;
+    }
+
+    for (final hook in settings.hooks!.preToolUse) {
+      if (hook.hooks.any((cmd) => _isOurHook(cmd.command))) {
+        // Found our hook - check if matcher is current
+        return hook.matcher == currentMatcherPattern;
+      }
+    }
+
+    return false;
+  }
+
+  /// Update the hook to the latest configuration (matcher pattern, timeout, etc.)
+  Future<void> updateHook() async {
+    final settings = await readSettings();
+    final videHook = getVideHook();
+
+    if (settings.hooks == null) {
+      // No hooks at all - just install fresh
+      await installHook();
+      return;
+    }
+
+    // Find and replace our existing hook
+    final updatedHooks = <PreToolUseHook>[];
+    bool foundOurHook = false;
+
+    for (final hook in settings.hooks!.preToolUse) {
+      if (hook.hooks.any((cmd) => _isOurHook(cmd.command))) {
+        // Replace our hook with updated version
+        updatedHooks.add(videHook);
+        foundOurHook = true;
+      } else {
+        // Keep other hooks unchanged
+        updatedHooks.add(hook);
+      }
+    }
+
+    if (!foundOurHook) {
+      // Our hook wasn't found - add it
+      updatedHooks.add(videHook);
+    }
+
+    final updatedSettings = ClaudeSettings(
+      permissions: settings.permissions,
+      hooks: HooksConfig(preToolUse: updatedHooks),
+    );
+
+    await _writeSettings(updatedSettings);
+  }
+
+  /// Ensure hook is installed and up to date. Returns true if changes were made.
+  Future<bool> ensureHookUpToDate() async {
+    final installed = await isHookInstalled();
+
+    if (!installed) {
+      await installHook();
+      return true;
+    }
+
+    final upToDate = await isHookUpToDate();
+    if (!upToDate) {
+      await updateHook();
+      return true;
     }
 
     return false;
@@ -88,7 +167,8 @@ class LocalSettingsManager {
   /// Get the Vide CLI hook configuration
   PreToolUseHook getVideHook() {
     return PreToolUseHook(
-      matcher: 'Write|Edit|Bash|MultiEdit|WebFetch|WebSearch|Read',
+      // Match all tools including MCP tools (mcp__*) so we have full control
+      matcher: currentMatcherPattern,
       hooks: [
         HookCommand(
           type: 'command',

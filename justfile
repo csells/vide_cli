@@ -12,3 +12,7 @@ install: compile
 compile:
     dart pub get
     dart compile exe bin/vide.dart -o vide
+
+# Generate bundled devtools code (run after changing runtime_ai_dev_tools)
+generate-devtools:
+    dart run packages/flutter_runtime_mcp/tool/generate_bundled_devtools.dart
