@@ -202,7 +202,7 @@ class _AgentChatState extends State<_AgentChat> {
     return null;
   }
 
-  void _handlePermissionResponse(PermissionRequest request, bool granted, bool remember) async {
+  void _handlePermissionResponse(PermissionRequest request, bool granted, bool remember, {String? patternOverride}) async {
     final permissionService = context.read(permissionServiceProvider);
 
     // If remember and granted, decide where to store based on tool type
@@ -215,16 +215,16 @@ class _AgentChatState extends State<_AgentChat> {
 
       if (isWriteOperation) {
         // Add to session cache (in-memory only) using inferred pattern
-        final pattern = PatternInference.inferPattern(toolName, toolInput);
+        final pattern = patternOverride ?? PatternInference.inferPattern(toolName, toolInput);
         permissionService.addSessionPattern(pattern);
       } else {
-        // Add to persistent whitelist with inferred pattern
+        // Add to persistent whitelist with inferred pattern (or override)
         final settingsManager = LocalSettingsManager(
           projectRoot: request.cwd,
           parrottRoot: Platform.script.resolve('.').toFilePath(),
         );
 
-        final pattern = PatternInference.inferPattern(toolName, toolInput);
+        final pattern = patternOverride ?? PatternInference.inferPattern(toolName, toolInput);
         await settingsManager.addToAllowList(pattern);
       }
     }
@@ -329,8 +329,8 @@ class _AgentChatState extends State<_AgentChat> {
                         ),
                       PermissionDialog.fromRequest(
                         request: currentPermissionRequest,
-                        onResponse: (granted, remember) =>
-                            _handlePermissionResponse(currentPermissionRequest, granted, remember),
+                        onResponse: (granted, remember, {String? patternOverride}) =>
+                            _handlePermissionResponse(currentPermissionRequest, granted, remember, patternOverride: patternOverride),
                         key: Key('permission_${currentPermissionRequest.requestId}'),
                       ),
                     ],

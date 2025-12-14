@@ -6,7 +6,9 @@ class PermissionDialog extends StatefulComponent {
   final String displayAction;
   final String? agentName;
   final String? inferredPattern;
-  final Function(bool granted, bool remember) onResponse;
+  /// Callback with (granted, remember, patternOverride)
+  /// patternOverride is non-null when user selects a different pattern than the inferred one
+  final Function(bool granted, bool remember, {String? patternOverride}) onResponse;
 
   const PermissionDialog({
     required this.toolName,
@@ -20,7 +22,7 @@ class PermissionDialog extends StatefulComponent {
   /// Create from permission request
   factory PermissionDialog.fromRequest({
     required PermissionRequest request,
-    required Function(bool granted, bool remember) onResponse,
+    required Function(bool granted, bool remember, {String? patternOverride}) onResponse,
     Key? key,
   }) {
     return PermissionDialog(
@@ -40,17 +42,30 @@ class _PermissionDialogState extends State<PermissionDialog> {
   bool _hasResponded = false;
   int _selectedIndex = 0;
 
-  // List of options
-  final List<_PermissionOption> _options = [
-    _PermissionOption('Allow', granted: true, remember: false),
-    _PermissionOption('Allow and remember', granted: true, remember: true),
-    _PermissionOption('Deny', granted: false, remember: false),
-  ];
+  List<_PermissionOption> get _options {
+    final options = <_PermissionOption>[
+      _PermissionOption('Allow', granted: true, remember: false),
+      _PermissionOption('Allow and remember', granted: true, remember: true),
+    ];
+
+    // For WebFetch, add an option to allow all WebFetch requests
+    if (component.toolName == 'WebFetch' && component.inferredPattern != null && component.inferredPattern != 'WebFetch') {
+      options.add(_PermissionOption(
+        'Allow all WebFetch',
+        granted: true,
+        remember: true,
+        patternOverride: 'WebFetch',
+      ));
+    }
+
+    options.add(_PermissionOption('Deny', granted: false, remember: false));
+    return options;
+  }
 
   void _handleResponse(_PermissionOption option) {
     if (_hasResponded) return;
     _hasResponded = true;
-    component.onResponse(option.granted, option.remember);
+    component.onResponse(option.granted, option.remember, patternOverride: option.patternOverride);
   }
 
   @override
@@ -151,6 +166,7 @@ class _PermissionOption {
   final String label;
   final bool granted;
   final bool remember;
+  final String? patternOverride;
 
-  _PermissionOption(this.label, {required this.granted, required this.remember});
+  _PermissionOption(this.label, {required this.granted, required this.remember, this.patternOverride});
 }
