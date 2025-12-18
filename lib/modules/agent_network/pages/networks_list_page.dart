@@ -8,6 +8,7 @@ import 'package:vide_cli/modules/agent_network/components/network_summary_compon
 import 'package:vide_cli/modules/agent_network/state/agent_networks_state_notifier.dart';
 import 'package:vide_cli/modules/agent_network/service/agent_network_manager.dart';
 import 'package:vide_cli/modules/memory/memories_viewer_page.dart';
+import 'package:vide_cli/modules/settings/vide_settings_page.dart';
 import 'package:path/path.dart' as path;
 
 class NetworksListPage extends StatefulComponent {
@@ -71,19 +72,25 @@ class _NetworksListPageState extends State<NetworksListPage> {
                 MemoriesViewerPage.push(context);
                 return true;
               }
+              if (event.logicalKey == LogicalKey.keyS) {
+                VideSettingsPage.push(context);
+                return true;
+              }
               return false;
             },
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 _MemoryBadge(count: totalMemories),
+                SizedBox(width: 2),
+                _SettingsBadge(),
               ],
             ),
           ),
           SizedBox(height: 1),
           // Help text
           Text(
-            'Esc: home | Backspace×2: delete | V: view memories',
+            'Esc: home | Backspace×2: delete | V: memories | S: settings',
             style: TextStyle(color: Colors.grey),
           ),
           SizedBox(height: 2),
@@ -215,6 +222,20 @@ class _MemoryBadge extends StatelessComponent {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Settings badge
+class _SettingsBadge extends StatelessComponent {
+  const _SettingsBadge();
+
+  @override
+  Component build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 1),
+      decoration: BoxDecoration(color: Colors.grey),
+      child: Text('Settings', style: TextStyle(color: Colors.white)),
     );
   }
 }

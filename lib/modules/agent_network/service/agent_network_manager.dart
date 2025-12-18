@@ -4,7 +4,10 @@ import 'package:vide_cli/modules/agent_network/service/claude_manager.dart';
 import 'package:vide_cli/modules/haiku/haiku_service.dart';
 import 'package:vide_cli/modules/haiku/haiku_providers.dart';
 import 'package:vide_cli/modules/haiku/prompts/loading_words_prompt.dart';
+import 'package:vide_cli/modules/haiku/prompts/code_sommelier_prompt.dart';
 import 'package:vide_cli/services/posthog_service.dart';
+import 'package:vide_cli/services/vide_settings.dart';
+import 'package:vide_cli/utils/code_detector.dart';
 import 'package:vide_cli/modules/agent_network/models/agent_id.dart';
 import 'package:vide_cli/modules/agent_network/models/agent_metadata.dart';
 import 'package:vide_cli/modules/agent_network/models/agent_network.dart';
@@ -113,6 +116,11 @@ class AgentNetworkManager extends StateNotifier<AgentNetworkState> {
 
     // Generate loading words in the background (don't await)
     _generateLoadingWords(ref, initialMessage.text);
+
+    // Generate code sommelier commentary with delay (don't await)
+    Future.delayed(const Duration(milliseconds: 500), () {
+      _generateSommelierCommentary(ref, initialMessage.text);
+    });
 
     // Send the initial message (preserves attachments)
     ref.read(claudeProvider(mainAgentId))?.sendMessage(initialMessage);
@@ -422,6 +430,27 @@ $message''';
     );
     if (words != null) {
       ref.read(loadingWordsProvider.notifier).state = words;
+    }
+  }
+
+  /// Generates code sommelier commentary for initial messages containing code.
+  void _generateSommelierCommentary(Ref ref, String userMessage) async {
+    final settings = VideSettingsManager.instance.settings;
+    if (!settings.codeSommelierEnabled) return;
+    if (!CodeDetector.containsCode(userMessage)) return;
+
+    final extractedCode = CodeDetector.extractCode(userMessage);
+    // Limit code length to avoid huge prompts
+    final truncatedCode = extractedCode.length > 2000 ? '${extractedCode.substring(0, 2000)}...' : extractedCode;
+    final systemPrompt = CodeSommelierPrompt.build(truncatedCode);
+
+    final commentary = await HaikuService.invoke(
+      systemPrompt: systemPrompt,
+      userMessage: 'Analyze this code.',
+    );
+
+    if (commentary != null) {
+      ref.read(codeSommelierProvider.notifier).state = commentary;
     }
   }
 }
