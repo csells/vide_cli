@@ -6,7 +6,13 @@ import 'package:nocterm_riverpod/nocterm_riverpod.dart';
 import 'package:claude_api/claude_api.dart';
 import 'package:vide_cli/components/attachment_text_field.dart';
 import 'package:vide_cli/components/enhanced_loading_indicator.dart';
-import 'package:vide_cli/services/loading_word_service.dart';
+import 'package:vide_cli/modules/haiku/haiku_service.dart';
+import 'package:vide_cli/modules/haiku/haiku_providers.dart';
+import 'package:vide_cli/modules/haiku/prompts/loading_words_prompt.dart';
+import 'package:vide_cli/modules/haiku/prompts/idle_prompt.dart';
+import 'package:vide_cli/modules/haiku/prompts/activity_tip_prompt.dart';
+import 'package:vide_cli/modules/haiku/prompts/fortune_prompt.dart';
+import 'package:vide_cli/modules/haiku/prompts/tldr_prompt.dart';
 import 'package:vide_cli/components/permission_dialog.dart';
 import 'package:vide_cli/components/tool_invocations/tool_invocation_router.dart';
 import 'package:vide_cli/components/tool_invocations/todo_list_component.dart';
@@ -104,6 +110,9 @@ class _NetworkExecutionPageState extends State<NetworkExecutionPage> {
     // Display the network goal
     final goalText = currentNetwork?.goal ?? 'Loading...';
 
+    // Get complexity estimate from provider
+    final complexityEstimate = context.watch(complexityEstimateProvider);
+
     return PermissionScope(
       child: Focusable(
         focused: true,
@@ -130,10 +139,28 @@ class _NetworkExecutionPageState extends State<NetworkExecutionPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Display the network goal with typing animation
-                TypingText(
-                  text: goalText,
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                // Display the network goal with typing animation and complexity estimate
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: TypingText(
+                        text: goalText,
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    if (complexityEstimate != null)
+                      Container(
+                        padding: EdgeInsets.only(left: 2),
+                        child: Text(
+                          complexityEstimate,
+                          style: TextStyle(
+                            color: _getComplexityColor(complexityEstimate),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 Divider(),
                 RunningAgentsBar(agents: networkState.agents, selectedIndex: selectedAgentIndex),
@@ -147,6 +174,14 @@ class _NetworkExecutionPageState extends State<NetworkExecutionPage> {
         ),
       ),
     );
+  }
+
+  Color _getComplexityColor(String estimate) {
+    final upper = estimate.toUpperCase();
+    if (upper.startsWith('SMALL')) return Colors.green;
+    if (upper.startsWith('MEDIUM')) return Colors.yellow;
+    if (upper.startsWith('LARGE')) return Colors.red;
+    return Colors.white;
   }
 }
 
@@ -170,6 +205,22 @@ class _AgentChatState extends State<_AgentChat> {
   DateTime? _responseStartTime;
   ConversationState? _lastConversationState;
 
+  // Idle detection state
+  Timer? _idleTimer;
+  DateTime? _idleStartTime;
+  static const _idleThreshold = Duration(seconds: 30);
+  bool _isGeneratingIdleMessage = false;
+
+  // Activity tip state
+  Timer? _activityTipTimer;
+  static const _activityTipThreshold = Duration(seconds: 10);
+  bool _isGeneratingActivityTip = false;
+  String? _currentToolName;
+
+  // TL;DR state - tracks which responses have TL;DRs and their expanded state
+  final Map<String, String> _tldrByResponseId = {};
+  final Set<String> _expandedTldrs = {};
+
   @override
   void initState() {
     super.initState();
@@ -180,14 +231,32 @@ class _AgentChatState extends State<_AgentChat> {
       if (conversation.state == ConversationState.receivingResponse &&
           _lastConversationState != ConversationState.receivingResponse) {
         _responseStartTime = DateTime.now();
+        // Stop idle timer when agent is responding
+        _stopIdleTimer();
+        // Clear any idle message when agent starts responding
+        context.read(idleMessageProvider.notifier).state = null;
+        // Start activity tip timer
+        _startActivityTipTimer();
+        // Track current tool being used
+        _trackCurrentTool(conversation);
       } else if (conversation.state != ConversationState.receivingResponse) {
         _responseStartTime = null;
+        // Stop activity tip timer when not receiving response
+        _stopActivityTipTimer();
+        context.read(activityTipProvider.notifier).state = null;
       }
 
       // When response completes, pre-generate words for the next message
       if (_lastConversationState == ConversationState.receivingResponse &&
           conversation.state == ConversationState.idle) {
         _preGenerateWordsForNextMessage(conversation);
+        // Start idle timer when agent becomes idle
+        _startIdleTimer();
+      }
+
+      // Track current tool while receiving response
+      if (conversation.state == ConversationState.receivingResponse) {
+        _trackCurrentTool(conversation);
       }
 
       _lastConversationState = conversation.state;
@@ -208,21 +277,39 @@ class _AgentChatState extends State<_AgentChat> {
   @override
   void dispose() {
     _conversationSubscription?.cancel();
+    _idleTimer?.cancel();
+    _activityTipTimer?.cancel();
     super.dispose();
   }
 
   void _sendMessage(Message message) {
+    // Stop idle timer and clear idle message when user sends a message
+    _stopIdleTimer();
+    context.read(idleMessageProvider.notifier).state = null;
+
     // Generate creative loading words with Haiku in the background
     // Don't clear existing words - keep showing them until new ones arrive
-    LoadingWordService.generateWordsWithHaiku(message.text).then((words) {
-      if (!mounted) return;
-      if (words != null) {
-        context.read(dynamicLoadingWordsProvider.notifier).state = words;
-      }
-    });
+    _generateLoadingWords(message.text);
 
     // Send the actual message
     component.client.sendMessage(message);
+  }
+
+  /// Helper to generate loading words using the new HaikuService
+  void _generateLoadingWords(String userMessage) async {
+    final systemPrompt = LoadingWordsPrompt.build(DateTime.now());
+    final wrappedMessage = 'Generate loading words for this task: "$userMessage"';
+
+    final words = await HaikuService.invokeForList(
+      systemPrompt: systemPrompt,
+      userMessage: wrappedMessage,
+      lineEnding: '...',
+      maxItems: 5,
+    );
+    if (!mounted) return;
+    if (words != null) {
+      context.read(loadingWordsProvider.notifier).state = words;
+    }
   }
 
   /// Pre-generate loading words for the next message based on the completed response.
@@ -249,14 +336,143 @@ class _AgentChatState extends State<_AgentChat> {
     if (contextForNextMessage.isEmpty) return;
 
     // Generate words in background - these will be ready for the next message
-    LoadingWordService.generateWordsWithHaiku(
-      'Continue discussing: $contextForNextMessage',
-    ).then((words) {
-      if (!mounted) return;
-      if (words != null) {
-        context.read(dynamicLoadingWordsProvider.notifier).state = words;
+    _generateLoadingWords('Continue discussing: $contextForNextMessage');
+  }
+
+  // ========== Idle Detection Methods ==========
+
+  void _startIdleTimer() {
+    _stopIdleTimer();
+    _idleStartTime = DateTime.now();
+    _idleTimer = Timer(_idleThreshold, _onIdleThresholdReached);
+  }
+
+  void _stopIdleTimer() {
+    _idleTimer?.cancel();
+    _idleTimer = null;
+    _idleStartTime = null;
+  }
+
+  void _resetIdleTimer() {
+    // Clear any existing idle message and restart the timer
+    context.read(idleMessageProvider.notifier).state = null;
+    if (_conversation.state == ConversationState.idle) {
+      _startIdleTimer();
+    }
+  }
+
+  void _onIdleThresholdReached() async {
+    if (!mounted || _isGeneratingIdleMessage) return;
+    if (_conversation.state != ConversationState.idle) return;
+
+    _isGeneratingIdleMessage = true;
+
+    final idleTime = _idleStartTime != null
+        ? DateTime.now().difference(_idleStartTime!)
+        : _idleThreshold;
+
+    final systemPrompt = IdlePrompt.build(idleTime);
+    final result = await HaikuService.invoke(
+      systemPrompt: systemPrompt,
+      userMessage: 'Generate an idle message for ${idleTime.inSeconds} seconds of inactivity.',
+      delay: Duration.zero,
+    );
+
+    _isGeneratingIdleMessage = false;
+    if (!mounted) return;
+
+    if (result != null) {
+      context.read(idleMessageProvider.notifier).state = result;
+    }
+  }
+
+  // ========== Activity Tip Methods ==========
+
+  void _startActivityTipTimer() {
+    _stopActivityTipTimer();
+    _activityTipTimer = Timer(_activityTipThreshold, _onActivityTipThresholdReached);
+  }
+
+  void _stopActivityTipTimer() {
+    _activityTipTimer?.cancel();
+    _activityTipTimer = null;
+    _isGeneratingActivityTip = false;
+  }
+
+  void _trackCurrentTool(Conversation conversation) {
+    // Find the most recent tool being used
+    for (final message in conversation.messages.reversed) {
+      if (message.role == MessageRole.assistant) {
+        for (final response in message.responses.reversed) {
+          if (response is ToolUseResponse) {
+            _currentToolName = response.toolName;
+            return;
+          }
+        }
       }
-    });
+    }
+  }
+
+  void _onActivityTipThresholdReached() async {
+    if (!mounted || _isGeneratingActivityTip) return;
+    if (_conversation.state != ConversationState.receivingResponse) return;
+
+    _isGeneratingActivityTip = true;
+
+    final activity = _currentToolName ?? 'working';
+    final systemPrompt = ActivityTipPrompt.build(activity);
+    final result = await HaikuService.invoke(
+      systemPrompt: systemPrompt,
+      userMessage: 'Generate a helpful tip for: $activity',
+      delay: Duration.zero,
+    );
+
+    _isGeneratingActivityTip = false;
+    if (!mounted) return;
+
+    if (result != null && _conversation.state == ConversationState.receivingResponse) {
+      context.read(activityTipProvider.notifier).state = result;
+    }
+  }
+
+  // ========== TL;DR Method ==========
+
+  void _generateTldr(String responseId, String content) async {
+    // Don't regenerate if already have one
+    if (_tldrByResponseId.containsKey(responseId)) return;
+
+    final systemPrompt = TldrPrompt.build(content);
+    final result = await HaikuService.invoke(
+      systemPrompt: systemPrompt,
+      userMessage: 'Generate a TL;DR summary.',
+      delay: Duration.zero,
+      timeout: const Duration(seconds: 8),
+    );
+
+    if (!mounted) return;
+
+    if (result != null) {
+      setState(() {
+        _tldrByResponseId[responseId] = result.trim();
+      });
+    }
+  }
+
+  // ========== Fortune Cookie Method ==========
+
+  void generateFortune() async {
+    final systemPrompt = FortunePrompt.build();
+    final result = await HaikuService.invoke(
+      systemPrompt: systemPrompt,
+      userMessage: 'Generate a developer fortune cookie.',
+      delay: Duration.zero,
+    );
+
+    if (!mounted) return;
+
+    if (result != null) {
+      context.read(fortuneProvider.notifier).state = result;
+    }
   }
 
   List<Map<String, dynamic>>? _getLatestTodos() {
@@ -342,7 +558,11 @@ class _AgentChatState extends State<_AgentChat> {
     final currentPermissionRequest = permissionQueueState.current;
 
     // Get dynamic loading words from provider
-    final dynamicLoadingWords = context.watch(dynamicLoadingWordsProvider);
+    final dynamicLoadingWords = context.watch(loadingWordsProvider);
+
+    // Get idle message and activity tip from providers
+    final idleMessage = context.watch(idleMessageProvider);
+    final activityTip = context.watch(activityTipProvider);
 
     return Focusable(
       onKeyEvent: _handleKeyEvent,
@@ -373,20 +593,35 @@ class _AgentChatState extends State<_AgentChat> {
               children: [
                 // Show typing indicator with hint
                 if (_conversation.state == ConversationState.receivingResponse)
-                  Row(
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      EnhancedLoadingIndicator(
-                        responseStartTime: _responseStartTime,
-                        outputTokens: _getOutputTokens(),
-                        dynamicWords: dynamicLoadingWords,
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          EnhancedLoadingIndicator(
+                            responseStartTime: _responseStartTime,
+                            outputTokens: _getOutputTokens(),
+                            dynamicWords: dynamicLoadingWords,
+                          ),
+                          SizedBox(width: 2),
+                          Text(
+                            '(Press ESC to stop)',
+                            style: TextStyle(color: Colors.white.withOpacity(TextOpacity.tertiary)),
+                          ),
+                        ],
                       ),
-                      SizedBox(width: 2),
-                      Text(
-                        '(Press ESC to stop)',
-                        style: TextStyle(color: Colors.white.withOpacity(TextOpacity.tertiary)),
-                      ),
+                      // Show activity tip when agent has been working for a while
+                      if (activityTip != null)
+                        Container(
+                          padding: EdgeInsets.only(top: 0),
+                          child: Text(
+                            activityTip,
+                            style: TextStyle(color: Colors.cyan.withOpacity(0.7)),
+                          ),
+                        ),
                     ],
                   ),
 
@@ -421,10 +656,26 @@ class _AgentChatState extends State<_AgentChat> {
                     ],
                   )
                 else
-                  AttachmentTextField(
-                    enabled: !_conversation.isProcessing,
-                    placeholder: 'Type a message...',
-                    onSubmit: _sendMessage,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AttachmentTextField(
+                        enabled: !_conversation.isProcessing,
+                        placeholder: 'Type a message...',
+                        onSubmit: _sendMessage,
+                        onChanged: (_) => _resetIdleTimer(),
+                      ),
+                      // Show idle message when agent has been waiting for user input
+                      if (idleMessage != null && _conversation.state == ConversationState.idle)
+                        Container(
+                          padding: EdgeInsets.only(top: 0),
+                          child: Text(
+                            idleMessage,
+                            style: TextStyle(color: Colors.white.withOpacity(0.5), fontStyle: FontStyle.italic),
+                          ),
+                        ),
+                    ],
                   ),
 
                 // Context usage bar below the text field
@@ -481,7 +732,78 @@ class _AgentChatState extends State<_AgentChat> {
               dynamicWords: dynamicLoadingWords,
             ));
           } else {
-            widgets.add(MarkdownText(response.content));
+            // Check if this is a long response that needs a TL;DR
+            final responseId = response.id;
+            final isLongResponse = response.content.length > 2000;
+
+            if (isLongResponse && !message.isStreaming) {
+              // Trigger TL;DR generation in background
+              _generateTldr(responseId, response.content);
+
+              final tldr = _tldrByResponseId[responseId];
+              final isExpanded = _expandedTldrs.contains(responseId);
+
+              widgets.add(Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Show TL;DR section if available
+                  if (tldr != null)
+                    Container(
+                      padding: EdgeInsets.only(bottom: 1),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Focusable(
+                            focused: false,
+                            onKeyEvent: (event) {
+                              if (event.logicalKey == LogicalKey.enter ||
+                                  event.logicalKey == LogicalKey.space) {
+                                setState(() {
+                                  if (isExpanded) {
+                                    _expandedTldrs.remove(responseId);
+                                  } else {
+                                    _expandedTldrs.add(responseId);
+                                  }
+                                });
+                                return true;
+                              }
+                              return false;
+                            },
+                            child: MouseRegion(
+                              child: GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    if (isExpanded) {
+                                      _expandedTldrs.remove(responseId);
+                                    } else {
+                                      _expandedTldrs.add(responseId);
+                                    }
+                                  });
+                                },
+                                child: Text(
+                                  isExpanded ? '▼ TL;DR (click to collapse)' : '▶ TL;DR (click to expand full response)',
+                                  style: TextStyle(color: Colors.cyan, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: EdgeInsets.only(left: 2),
+                            child: Text(
+                              tldr,
+                              style: TextStyle(color: Colors.white.withOpacity(0.8)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  // Show full response if expanded or if no TL;DR yet
+                  if (isExpanded || tldr == null) MarkdownText(response.content),
+                ],
+              ));
+            } else {
+              widgets.add(MarkdownText(response.content));
+            }
           }
         } else if (response is ToolUseResponse) {
           // Check if we have a result for this tool call
