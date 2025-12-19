@@ -212,16 +212,6 @@ class _AgentChatState extends State<_AgentChat> {
   // Message input controller - persists across permission dialog appearances
   late final AttachmentTextEditingController _inputController;
 
-  void _debugLog(String message) {
-    if (Platform.environment['VIDE_DEBUG_HAIKU'] == '1') {
-      final timestamp = DateTime.now().toIso8601String();
-      File('/tmp/vide_haiku.log').writeAsStringSync(
-        '[$timestamp] [ActivityTip] $message\n',
-        mode: FileMode.append,
-      );
-    }
-  }
-
   @override
   void initState() {
     super.initState();
@@ -229,11 +219,9 @@ class _AgentChatState extends State<_AgentChat> {
 
     // Listen to conversation updates
     _conversationSubscription = component.client.conversation.listen((conversation) {
-      _debugLog('conversation listener: state=${conversation.state}, lastState=$_lastConversationState');
       // Track when response starts
       if (conversation.state == ConversationState.receivingResponse &&
           _lastConversationState != ConversationState.receivingResponse) {
-        _debugLog('  -> transitioning INTO receivingResponse, starting timer');
         AgentResponseTimes.startIfNeeded(component.client.sessionId);
         // Stop idle timer when agent is responding
         _stopIdleTimer();
@@ -308,16 +296,6 @@ class _AgentChatState extends State<_AgentChat> {
   }
 
   void _sendMessage(Message message) {
-    // Log immediately to confirm _sendMessage is called
-    try {
-      File('/tmp/vide_haiku.log').writeAsStringSync(
-        '[${DateTime.now().toIso8601String()}] [_sendMessage] called, textLen=${message.text.length}\n',
-        mode: FileMode.append,
-      );
-    } catch (e) {
-      // ignore
-    }
-
     // Stop idle timer and clear idle message when user sends a message
     _stopIdleTimer();
     context.read(idleMessageProvider.notifier).state = null;
@@ -334,15 +312,6 @@ class _AgentChatState extends State<_AgentChat> {
     Future.delayed(const Duration(milliseconds: 500), () {
       final sommelierEnabled = VideSettingsManager.instance.settings.codeSommelierEnabled;
       final hasCode = CodeDetector.containsCode(textToCheck);
-      // Log to haiku log file for debugging
-      try {
-        File('/tmp/vide_haiku.log').writeAsStringSync(
-          '[${DateTime.now().toIso8601String()}] [Sommelier] enabled=$sommelierEnabled, hasCode=$hasCode, textLen=${textToCheck.length}\n',
-          mode: FileMode.append,
-        );
-      } catch (e) {
-        // ignore
-      }
       if (mounted && sommelierEnabled && hasCode) {
         _generateSommelierCommentary(textToCheck);
       }
@@ -488,13 +457,11 @@ class _AgentChatState extends State<_AgentChat> {
   // ========== Activity Tip Methods ==========
 
   void _startActivityTipTimer() {
-    _debugLog('_startActivityTipTimer() called');
     _stopActivityTipTimer();
     _activityTipTimer = Timer(_activityTipThreshold, _onActivityTipThresholdReached);
   }
 
   void _stopActivityTipTimer() {
-    _debugLog('_stopActivityTipTimer() called, hadTimer=${_activityTipTimer != null}');
     _activityTipTimer?.cancel();
     _activityTipTimer = null;
     _isGeneratingActivityTip = false;
@@ -506,35 +473,26 @@ class _AgentChatState extends State<_AgentChat> {
     final isReceiving = _conversation.state == ConversationState.receivingResponse;
     final agentStatus = context.read(agentStatusProvider(component.client.sessionId));
     final isWaitingForAgent = agentStatus == AgentStatus.waitingForAgent;
-    _debugLog('_shouldShowActivityTips: isReceiving=$isReceiving, agentStatus=$agentStatus, isWaitingForAgent=$isWaitingForAgent');
     return isReceiving || isWaitingForAgent;
   }
 
   void _onActivityTipThresholdReached() {
-    _debugLog('_onActivityTipThresholdReached() called');
-    if (!mounted || _isGeneratingActivityTip) {
-      _debugLog('  -> early return: mounted=$mounted, isGenerating=$_isGeneratingActivityTip');
-      return;
-    }
+    if (!mounted || _isGeneratingActivityTip) return;
 
     final shouldShow = _shouldShowActivityTips();
-    _debugLog('  -> shouldShowActivityTips=$shouldShow');
     if (!shouldShow) return;
 
     _isGeneratingActivityTip = true;
 
     // Get a random pre-generated fact directly (no Haiku needed)
     final fact = FactSourceService.instance.getRandomFact();
-    _debugLog('  -> getRandomFact returned: ${fact != null ? "fact (${fact.length} chars)" : "null"}');
 
     _isGeneratingActivityTip = false;
     if (!mounted) return;
 
     final shouldShowNow = _shouldShowActivityTips();
-    _debugLog('  -> shouldShowActivityTips (2nd check)=$shouldShowNow');
 
     if (fact != null && shouldShowNow) {
-      _debugLog('  -> Setting activityTip!');
       context.read(activityTipProvider.notifier).state = fact;
       // Record when fact was shown and start timer to clear after minimum duration
       _factShownAt = DateTime.now();
