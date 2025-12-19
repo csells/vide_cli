@@ -20,7 +20,6 @@ import 'package:vide_cli/modules/permissions/permission_service.dart';
 import 'package:vide_cli/modules/settings/local_settings_manager.dart';
 import 'package:vide_cli/modules/settings/pattern_inference.dart';
 import 'package:vide_cli/modules/agent_network/mixins/activity_tip_mixin.dart';
-import 'package:vide_cli/modules/agent_network/models/agent_status.dart';
 import 'package:vide_cli/modules/agent_network/state/agent_status_manager.dart';
 import 'service/claude_manager.dart';
 import '../permissions/permission_scope.dart';
@@ -333,9 +332,6 @@ class _AgentChatState extends State<_AgentChat> with ActivityTipMixin {
     // Handle agent status changes for activity tip timer
     handleAgentStatusChange(agentStatus, _conversation.state);
 
-    // Check if actively working (for activity tip display)
-    final isActivelyWorking = _conversation.state == ConversationState.receivingResponse;
-
     return Focusable(
       onKeyEvent: _handleKeyEvent,
       focused: true,
@@ -390,13 +386,6 @@ class _AgentChatState extends State<_AgentChat> with ActivityTipMixin {
                     ],
                   ),
 
-                // Show activity tip during long operations
-                if (activityTip != null && (isActivelyWorking || agentStatus == AgentStatus.waitingForAgent))
-                  Text(
-                    activityTip,
-                    style: TextStyle(color: Colors.green.withOpacity(0.7)),
-                  ),
-
                 // Show quit warning if active
                 if (component.showQuitWarning)
                   Text(
@@ -432,6 +421,13 @@ class _AgentChatState extends State<_AgentChat> with ActivityTipMixin {
                     enabled: true,
                     placeholder: 'Type a message...',
                     onSubmit: _sendMessage,
+                  ),
+
+                // Show activity tip below prompt (shown for minimum duration even after agent finishes)
+                if (activityTip != null)
+                  Text(
+                    activityTip,
+                    style: TextStyle(color: Colors.green.withOpacity(0.7)),
                   ),
               ],
             ),
