@@ -197,8 +197,13 @@ class _AgentChatState extends State<_AgentChat> {
 
   // Activity tip state
   Timer? _activityTipTimer;
-  static const _activityTipThreshold = Duration(seconds: 10);
+  static const _activityTipThreshold = Duration(seconds: 4);
   bool _isGeneratingActivityTip = false;
+
+  // Minimum fact display duration tracking
+  DateTime? _factShownAt;
+  Timer? _factDisplayTimer;
+  static const _minimumFactDisplayDuration = Duration(seconds: 8);
 
   // Token tracking - track last known values to compute deltas
   int _lastInputTokens = 0;
@@ -228,7 +233,22 @@ class _AgentChatState extends State<_AgentChat> {
         AgentResponseTimes.clear(component.client.sessionId);
         // Stop activity tip timer when not receiving response
         _stopActivityTipTimer();
-        context.read(activityTipProvider.notifier).state = null;
+        // Only clear the fact immediately if minimum display duration has elapsed
+        // Otherwise, let the _factDisplayTimer handle cleanup
+        if (_factShownAt != null) {
+          final elapsed = DateTime.now().difference(_factShownAt!);
+          if (elapsed >= _minimumFactDisplayDuration) {
+            // Minimum time elapsed, safe to clear immediately
+            _factDisplayTimer?.cancel();
+            _factDisplayTimer = null;
+            _factShownAt = null;
+            context.read(activityTipProvider.notifier).state = null;
+          }
+          // else: let _factDisplayTimer handle cleanup after minimum duration
+        } else {
+          // No fact showing, just clear
+          context.read(activityTipProvider.notifier).state = null;
+        }
       }
 
       // When response completes, pre-generate words for the next message
@@ -267,6 +287,7 @@ class _AgentChatState extends State<_AgentChat> {
     _conversationSubscription?.cancel();
     _idleTimer?.cancel();
     _activityTipTimer?.cancel();
+    _factDisplayTimer?.cancel();
     _inputController.dispose();
     super.dispose();
   }
@@ -485,6 +506,22 @@ class _AgentChatState extends State<_AgentChat> {
 
     if (fact != null && _shouldShowActivityTips()) {
       context.read(activityTipProvider.notifier).state = fact;
+      // Record when fact was shown and start timer to clear after minimum duration
+      _factShownAt = DateTime.now();
+      _factDisplayTimer?.cancel();
+      _factDisplayTimer = Timer(_minimumFactDisplayDuration, _onFactDisplayTimerExpired);
+    }
+  }
+
+  /// Called when the minimum fact display duration has elapsed.
+  /// Clears the fact if conditions no longer warrant showing it.
+  void _onFactDisplayTimerExpired() {
+    _factDisplayTimer = null;
+    _factShownAt = null;
+    if (!mounted) return;
+    // Only clear if we're no longer in a state that should show tips
+    if (!_shouldShowActivityTips()) {
+      context.read(activityTipProvider.notifier).state = null;
     }
   }
 
@@ -618,7 +655,22 @@ class _AgentChatState extends State<_AgentChat> {
       Future.microtask(() {
         if (mounted) {
           _stopActivityTipTimer();
-          context.read(activityTipProvider.notifier).state = null;
+          // Only clear the fact immediately if minimum display duration has elapsed
+          // Otherwise, let the _factDisplayTimer handle cleanup
+          if (_factShownAt != null) {
+            final elapsed = DateTime.now().difference(_factShownAt!);
+            if (elapsed >= _minimumFactDisplayDuration) {
+              // Minimum time elapsed, safe to clear immediately
+              _factDisplayTimer?.cancel();
+              _factDisplayTimer = null;
+              _factShownAt = null;
+              context.read(activityTipProvider.notifier).state = null;
+            }
+            // else: let _factDisplayTimer handle cleanup after minimum duration
+          } else {
+            // No fact showing, just clear
+            context.read(activityTipProvider.notifier).state = null;
+          }
         }
       });
     }
