@@ -105,7 +105,37 @@ class _NetworksOverviewPageState extends State<NetworksOverviewPage> {
         setState(() {
           _isLoadingPlaceholder = false;
         });
-        final text = placeholder?.trim() ?? 'Describe your goal (you can attach images)';
+        String text = placeholder?.trim() ?? 'Describe your goal (you can attach images)';
+
+        // Validate: handle verbose multi-line responses
+        if (text.contains('\n') || text.length > 50) {
+          // Multi-line or too long - try to extract just the placeholder
+          final lines = text.split('\n').map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
+          // Look for a short line that looks like a placeholder (not explanation text)
+          String? shortLine;
+          for (final line in lines) {
+            // Skip lines that look like explanations
+            if (line.startsWith('Here') ||
+                line.startsWith('Alright') ||
+                line.contains(':') ||
+                line.startsWith('Pick') ||
+                line.startsWith('I')) continue;
+            // Clean up markdown and list markers
+            final cleaned =
+                line.replaceAll(RegExp(r'^[\*\-\d\.\)]+\s*'), '').replaceAll('**', '').trim();
+            if (cleaned.length >= 3 && cleaned.length <= 45) {
+              shortLine = cleaned;
+              break;
+            }
+          }
+          text = shortLine ?? 'Describe your goal (you can attach images)';
+        }
+
+        // Final safety: if still too long, use fallback
+        if (text.length > 50) {
+          text = 'Describe your goal (you can attach images)';
+        }
+
         context.read(placeholderTextProvider.notifier).state = text;
         _startTypingAnimation(text);
       }

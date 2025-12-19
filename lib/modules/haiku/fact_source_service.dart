@@ -45,7 +45,7 @@ class FactSourceService {
         // Extract facts from the JSON
         final factsList = data['facts'] as List<dynamic>? ?? [];
         for (final fact in factsList) {
-          final text = fact['fact'] as String?;
+          final text = fact['text'] as String?;
           if (text != null && text.isNotEmpty) {
             _facts.add(text);
           }

@@ -14,7 +14,10 @@ RULES:
 - Like a friend asking what you want to work on
 - BANNED: "What's on your mind", "Describe your", "Enter your", "Type here"
 - Be creative! Think: "What are we breaking today?", "Got bugs?", "Your wish, my code..."
-- Output raw text only, no quotes
+
+CRITICAL: Output ONLY the placeholder text itself.
+NO explanations, NO options, NO numbering, NO markdown.
+Just the 3-5 word phrase, nothing else.
 ''';
   }
 }
