@@ -3,12 +3,6 @@ import 'package:nocterm_riverpod/nocterm_riverpod.dart';
 /// Dynamic loading words - shown during agent processing
 final loadingWordsProvider = StateProvider<List<String>?>((ref) => null);
 
-/// Startup horoscope - generated once on app start
-final horoscopeProvider = StateProvider<String?>((ref) => null);
-
-/// Startup tip - generated based on project context
-final startupTipProvider = StateProvider<String?>((ref) => null);
-
 /// Dynamic placeholder text for input field
 final placeholderTextProvider = StateProvider<String?>((ref) => null);
 
@@ -17,9 +11,6 @@ final idleMessageProvider = StateProvider<String?>((ref) => null);
 
 /// Activity tip - shown during long operations
 final activityTipProvider = StateProvider<String?>((ref) => null);
-
-/// Fortune cookie - dev wisdom
-final fortuneProvider = StateProvider<String?>((ref) => null);
 
 /// Code sommelier commentary
 final codeSommelierProvider = StateProvider<String?>((ref) => null);

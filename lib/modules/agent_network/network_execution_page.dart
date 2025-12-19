@@ -11,7 +11,6 @@ import 'package:vide_cli/modules/haiku/haiku_providers.dart';
 import 'package:vide_cli/modules/haiku/prompts/loading_words_prompt.dart';
 import 'package:vide_cli/modules/haiku/prompts/idle_prompt.dart';
 import 'package:vide_cli/modules/haiku/fact_source_service.dart';
-import 'package:vide_cli/modules/haiku/prompts/fortune_prompt.dart';
 import 'package:vide_cli/modules/haiku/prompts/code_sommelier_prompt.dart';
 import 'package:vide_cli/utils/code_detector.dart';
 import 'package:vide_cli/services/vide_settings.dart';
@@ -486,23 +485,6 @@ class _AgentChatState extends State<_AgentChat> {
 
     if (fact != null && _shouldShowActivityTips()) {
       context.read(activityTipProvider.notifier).state = fact;
-    }
-  }
-
-  // ========== Fortune Cookie Method ==========
-
-  void generateFortune() async {
-    final systemPrompt = FortunePrompt.build();
-    final result = await HaikuService.invoke(
-      systemPrompt: systemPrompt,
-      userMessage: 'Generate a developer fortune cookie.',
-      delay: Duration.zero,
-    );
-
-    if (!mounted) return;
-
-    if (result != null) {
-      context.read(fortuneProvider.notifier).state = result;
     }
   }
 
