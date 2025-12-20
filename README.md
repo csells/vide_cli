@@ -1,9 +1,7 @@
-
-# Vide CLI
-
-<p align="center">
-  <img src="docs/logo.png" alt="Vide Logo" width="140"/>
-</p>
+<h1 align="center">
+  <img src="docs/logo.png" alt="Vide Logo" height="50" style="vertical-align: middle;"/>
+  Vide CLI
+</h1>
 
 <p align="center">
   <img src="docs/hero.png" alt="Vide CLI" width="800"/>
@@ -15,7 +13,7 @@
 
 <p align="center">
   <a href="https://github.com/Norbert515/vide_cli/actions/workflows/test.yml">
-    <img src="https://img.shields.io/github/actions/workflow/status/Norbert515/vide_cli/test.yml?style=for-the-badge&logo=github&label=Tests" alt="Tests"/>
+    <img src="https://img.shields.io/github/actions/workflow/status/Norbert515/vide_cli/test.yml?branch=main&style=for-the-badge&logo=github&label=Tests" alt="Tests"/>
   </a>
   <a href="https://github.com/Norbert515/vide_cli/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-Apache%202.0-blue?style=for-the-badge" alt="License"/>
