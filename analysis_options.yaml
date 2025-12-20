@@ -1,0 +1,14 @@
+analyzer:
+  exclude:
+    # Flutter packages that require Flutter SDK for analysis
+    - packages/runtime_ai_dev_tools/**
+    - packages/flutter_runtime_mcp/test_app/**
+    - packages/flutter_runtime_mcp/tui_test_app/**
+    # Generated files
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+
+linter:
+  rules:
+    # Allow print in this CLI application
+    avoid_print: false

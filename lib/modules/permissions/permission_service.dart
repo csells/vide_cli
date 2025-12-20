@@ -90,6 +90,7 @@ final permissionServiceProvider = Provider<PermissionService>((ref) {
 class PermissionService {
   HttpServer? _server;
   int? _port;
+  // ignore: unused_field
   String? _primarySessionId;
   GitignoreMatcher? _gitignoreMatcher;
   String? _permissionMode;
