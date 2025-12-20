@@ -4,10 +4,6 @@
 </h1>
 
 <p align="center">
-  <img src="docs/hero.png" alt="Vide CLI" width="800"/>
-</p>
-
-<p align="center">
   <strong>An agentic terminal UI for Claude, built for Flutter developers</strong>
 </p>
 
@@ -20,6 +16,10 @@
   </a>
   <img src="https://img.shields.io/badge/dart-%5E3.8.0-0175C2?style=for-the-badge&logo=dart&logoColor=white" alt="Dart"/>
   <img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey?style=for-the-badge" alt="Platform"/>
+</p>
+
+<p align="center">
+  <img src="docs/hero.png" alt="Vide CLI" width="800"/>
 </p>
 
 ---
