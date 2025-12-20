@@ -122,11 +122,16 @@ jobs:
       - name: Codesign universal binary
         run: codesign --sign - --force vide-macos
 
+      - name: Create tarball
+        run: |
+          chmod +x vide-macos
+          tar -czvf vide-macos.tar.gz vide-macos
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: vide-macos
-          path: vide-macos
+          path: vide-macos.tar.gz
 
   release:
     needs: [create-macos-universal, build-linux-x64, build-windows-x64]
@@ -155,13 +160,13 @@ jobs:
 
       - name: Create SHA256SUMS
         run: |
-          sha256sum vide-macos vide-linux-x64 vide-windows-x64.exe > SHA256SUMS.txt
+          sha256sum vide-macos.tar.gz vide-linux-x64 vide-windows-x64.exe > SHA256SUMS.txt
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            vide-macos
+            vide-macos.tar.gz
             vide-linux-x64
             vide-windows-x64.exe
             SHA256SUMS.txt
@@ -176,6 +181,6 @@ jobs:
         with:
           formula-name: vide
           homebrew-tap: Norbert515/homebrew-tap
-          download-url: https://github.com/Norbert515/vide_cli/releases/download/v${{ needs.release.outputs.version }}/vide-macos
+          download-url: https://github.com/Norbert515/vide_cli/releases/download/v${{ needs.release.outputs.version }}/vide-macos.tar.gz
         env:
           COMMITTER_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
