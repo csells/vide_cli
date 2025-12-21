@@ -61,7 +61,8 @@ class SyntaxHighlighter {
     if (lastIndexOfDot == -1) {
       return null;
     }
-    final extension = filePath.substring(lastIndexOfDot + 1);
+    // Include the dot in the extension to match map keys (e.g., ".dart" not "dart")
+    final extension = filePath.substring(lastIndexOfDot);
     return _languageMap[extension.toLowerCase()];
   }
 

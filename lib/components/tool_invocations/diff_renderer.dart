@@ -27,6 +27,10 @@ class DiffRenderer extends StatefulComponent {
 }
 
 class _DiffRendererState extends State<DiffRenderer> {
+  // Pre-compiled regex patterns to avoid creating RegExp objects in loops
+  static final _lineValidationRegex = RegExp(r'^\s*\d+→');
+  static final _lineParseRegex = RegExp(r'^\s*(\d+)→(.*)');
+
   late final List<DiffLine> _cachedDiffLines;
   late final String? _cachedFormattedPath;
   late final bool _shouldUseFallback;
@@ -158,29 +162,29 @@ class _DiffRendererState extends State<DiffRenderer> {
 
     final resultLines = resultContent.split('\n');
 
-    // Split old and new strings into lines for comparison
-    final oldLines = invocation.oldString.split('\n');
-    final newLines = invocation.newString.split('\n');
+    // Use Sets for O(1) lookup instead of O(n) list iteration
+    final oldSet = invocation.oldString.split('\n').map((l) => l.trim()).toSet();
+    final newSet = invocation.newString.split('\n').map((l) => l.trim()).toSet();
 
     for (final line in resultLines) {
-      // Skip non-content lines
-      if (line.isEmpty || !RegExp(r'^\s*\d+→').hasMatch(line)) {
+      // Skip non-content lines (using pre-compiled regex)
+      if (line.isEmpty || !_lineValidationRegex.hasMatch(line)) {
         continue;
       }
 
-      // Parse line number and content
-      final match = RegExp(r'^\s*(\d+)→(.*)').firstMatch(line);
+      // Parse line number and content (using pre-compiled regex)
+      final match = _lineParseRegex.firstMatch(line);
       if (match != null) {
         final lineNumber = int.tryParse(match.group(1)!);
         final content = match.group(2)!;
+        final trimmedContent = content.trim();
 
         // Determine if this line was part of the change
         DiffLineType lineType = DiffLineType.unchanged;
 
-        // Check if content matches any line in newString (added/modified)
-        bool isInNew = newLines.any((newLine) => content.trim() == newLine.trim());
-        // Check if content matches any line in oldString (removed/modified)
-        bool isInOld = oldLines.any((oldLine) => content.trim() == oldLine.trim());
+        // O(1) Set lookups instead of O(n) list iteration
+        bool isInNew = newSet.contains(trimmedContent);
+        bool isInOld = oldSet.contains(trimmedContent);
 
         if (isInNew && !isInOld) {
           // Line is in new but not old = added
