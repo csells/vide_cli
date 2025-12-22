@@ -27,7 +27,7 @@ packages/
 └── (other internal packages)
 ```
 
-**Workspace note**: Repo root becomes workspace tooling only (build/test scripts, docs); update `just` scripts to point at `apps/vide_cli`.
+**Workspace note**: Repo root becomes workspace tooling only (build/test scripts, docs); add a root `pubspec.yaml` with explicit lists for both apps and packages in `workspace` (apps: `apps/vide_cli`; packages: `packages/vide_core`, `packages/vide_server`, `packages/flutter_runtime_mcp`) and set `resolution: workspace` in each app/package `pubspec.yaml`. Update `just` scripts to point at `apps/vide_cli`.
 
 **Rationale**: Single source of truth for business logic. Both TUI and REST API depend on vide_core. Bug fixes and features benefit both implementations immediately.
 
@@ -49,12 +49,18 @@ This prevents any conflicts between CLI and web users working on the same projec
 
 ### Phase 1: Extract Core Business Logic (~3-4 hours)
 
+#### 1.0 Prepare Workspace
+- Move `vide_cli` into `apps/vide_cli`
+- Add/Update root `pubspec.yaml` with explicit `workspace` lists for apps and packages
+- Set `resolution: workspace` in `apps/vide_cli/pubspec.yaml`, `packages/vide_core/pubspec.yaml`, `packages/vide_server/pubspec.yaml`, and `packages/flutter_runtime_mcp/pubspec.yaml`
+- Update `just` scripts to point at `apps/vide_cli`
+
 #### 1.1 Create `packages/vide_core/` Package
 **New Files:**
 - `packages/vide_core/pubspec.yaml`
 - `packages/vide_core/lib/vide_core.dart` (barrel export)
 
-**Dependencies**: Core Dart packages + Riverpod only (replace nocterm_riverpod imports when moving)
+**Dependencies**: Core Dart packages + Riverpod ^3.0.3 only (replace nocterm_riverpod imports when moving)
 
 #### 1.2 Move Models to `vide_core`
 **Move these files** from `apps/vide_cli/lib/` to `packages/vide_core/lib/models/`:
@@ -125,9 +131,9 @@ final videConfigManagerProvider = Provider<VideConfigManager>((ref) {
 - `apps/vide_cli/lib/modules/mcp/agent/` → `packages/vide_core/lib/mcp/agent/` (entire directory)
 - `apps/vide_cli/lib/modules/mcp/task_management/` → `packages/vide_core/lib/mcp/task_management/` (entire directory)
 - `apps/vide_cli/lib/modules/mcp/git/` → `packages/vide_core/lib/mcp/git/` (entire directory)
-- `packages/flutter_runtime_mcp/` stays in place; add a path dependency from `packages/vide_core` to `../flutter_runtime_mcp`
+- `packages/flutter_runtime_mcp/` stays in place; add `flutter_runtime_mcp: ^0.1.0` in `packages/vide_core/pubspec.yaml`
 
-**Changes**: Move MCP servers AS-IS; add a path dependency to `flutter_runtime_mcp` in vide_core.
+**Changes**: Move MCP servers AS-IS; add `flutter_runtime_mcp: ^0.1.0` in vide_core.
 
 **Rationale**: Centralize non-TUI MCP logic in vide_core while keeping `flutter_runtime_mcp` as a sibling package. Goal is feature-for-feature equivalent web UI eventually.
 
@@ -141,11 +147,10 @@ final videConfigManagerProvider = Provider<VideConfigManager>((ref) {
 **Rationale**: These are core orchestration services used by AgentNetworkManager. Need them in vide_core for the REST API.
 
 #### 1.10 Update vide_cli to use vide_core
-**Modify**: `apps/vide_cli/pubspec.yaml` - Add dependency:
+**Modify**: `apps/vide_cli/pubspec.yaml` - Add dependency (workspace resolution):
 ```yaml
 dependencies:
-  vide_core:
-    path: ../../packages/vide_core
+  vide_core: ^0.1.0
 ```
 
 **Update imports** in all files that used moved code:
@@ -170,9 +175,8 @@ Providers moved with their services, but `vide_cli` and `vide_server` must overr
 dependencies:
   shelf: ^1.4.1
   shelf_router: ^1.1.4
-  riverpod: ^2.5.1
-  vide_core:
-    path: ../vide_core
+  riverpod: ^3.0.3
+  vide_core: ^0.1.0
 ```
 
 **Note**: No JWT, bcrypt, or auth dependencies for MVP!
@@ -301,7 +305,10 @@ void main(List<String> args) async {
 
 ## Critical Files Summary
 
-### Files to CREATE (~8 new files, ~600 lines)
+### Files to CREATE (~9 new files, ~600 lines)
+
+**workspace root**
+- `pubspec.yaml` - Workspace config (`publish_to: none`, `workspace: [apps/vide_cli, packages/vide_core, packages/vide_server, packages/flutter_runtime_mcp]`)
 
 **packages/vide_core/**
 - `pubspec.yaml` - Core package definition (includes Riverpod)
@@ -337,7 +344,7 @@ void main(List<String> args) async {
 - `apps/vide_cli/lib/modules/mcp/agent/` → `packages/vide_core/lib/mcp/agent/`
 - `apps/vide_cli/lib/modules/mcp/task_management/` → `packages/vide_core/lib/mcp/task_management/`
 - `apps/vide_cli/lib/modules/mcp/git/` → `packages/vide_core/lib/mcp/git/`
-- `packages/flutter_runtime_mcp/` stays in place; add a path dependency from `packages/vide_core` to `../flutter_runtime_mcp`
+- `packages/flutter_runtime_mcp/` stays in place; add `flutter_runtime_mcp: ^0.1.0` in `packages/vide_core/pubspec.yaml`
 
 **Agent Configurations:**
 - `apps/vide_cli/lib/modules/agents/models/agent_configuration.dart` → `packages/vide_core/lib/agents/`
@@ -346,7 +353,7 @@ void main(List<String> args) async {
 ### Files to UPDATE in vide_cli (apps/vide_cli)
 
 **vide_cli changes**:
-- `apps/vide_cli/pubspec.yaml` - Add vide_core dependency (`path: ../../packages/vide_core`)
+- `apps/vide_cli/pubspec.yaml` - Add vide_core dependency (workspace resolution)
 - Update imports in ~20-30 files to use `package:vide_core/...`
 
 **What STAYS in vide_cli:**
@@ -390,7 +397,7 @@ void main(List<String> args) async {
 │  vide_cli (apps/ - TUI only)            │
 │  ├─ TUI Pages & Components (nocterm)    │
 │  ├─ Permission Service (dialog UI)      │
-│  ├─ Entry point (bin/vide.dart)         │
+│  ├─ Entry point (apps/vide_cli/bin/vide.dart) │
 │  └─ Depends on vide_core                │
 └─────────────────────────────────────────┘
 ```
@@ -400,8 +407,8 @@ void main(List<String> args) async {
 ## Implementation Sequence
 
 ### Phase 1: Foundation - Extract vide_core (Day 1-2) **CHECKPOINT PHASE**
-0. Move `vide_cli` into `apps/vide_cli` and update workspace tooling references (`just` scripts, docs)
-1. Create `packages/vide_core/` with pubspec.yaml (dependencies: claude_api, riverpod, freezed, json_serializable, etc.)
+0. Move `vide_cli` into `apps/vide_cli`, add workspace root `pubspec.yaml` with explicit app/package `workspace` lists, set `resolution: workspace` in all app/package pubspecs, and update `just` scripts
+1. Create `packages/vide_core/` with pubspec.yaml (dependencies: claude_api, riverpod ^3.0.3, freezed, json_serializable, etc.)
 2. **Move** models to vide_core - AS-IS
 3. **Move** VideConfigManager to vide_core - convert singleton to Riverpod provider (add configRoot param)
 4. **Move** MemoryService to vide_core - AS-IS
@@ -412,7 +419,7 @@ void main(List<String> args) async {
 9. **Move** ClaudeManager to vide_core - AS-IS
 10. **Move** AgentStatusManager to vide_core - AS-IS
 11. **Move** MCP servers from `apps/vide_cli/lib/modules/mcp` to vide_core - AS-IS; keep `flutter_runtime_mcp` in place
-12. Update `apps/vide_cli/pubspec.yaml` to depend on vide_core (`path: ../../packages/vide_core`)
+12. Update `apps/vide_cli/pubspec.yaml` to depend on vide_core (workspace resolution)
 13. Update all imports in vide_cli
 14. **Add provider overrides in TUI**: VideConfigManager (configRoot = ~/.vide), workingDirProvider
 15. **Test TUI still works - STOP HERE FOR CHECKPOINT**
