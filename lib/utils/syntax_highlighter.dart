@@ -13,29 +13,9 @@ import 'package:highlighting/languages/markdown.dart';
 import 'package:highlighting/languages/bash.dart';
 import 'package:highlighting/languages/sql.dart';
 import 'package:nocterm/src/painting/text_span.dart';
+import 'package:vide_cli/theme/colors/syntax_colors.dart';
 
 class SyntaxHighlighter {
-  // VS Code Dark+ inspired color scheme for terminal
-  static final Map<String, Color> _colorScheme = {
-    'keyword': Color.fromRGB(86, 156, 214), // blue
-    'built_in': Color.fromRGB(86, 156, 214), // blue
-    'type': Color.fromRGB(78, 201, 176), // cyan
-    'class': Color.fromRGB(78, 201, 176), // cyan
-    'string': Color.fromRGB(206, 145, 120), // orange
-    'number': Color.fromRGB(181, 206, 168), // light green
-    'literal': Color.fromRGB(181, 206, 168), // light green
-    'comment': Color.fromRGB(106, 153, 85), // green
-    'function': Color.fromRGB(220, 220, 170), // yellow
-    'title': Color.fromRGB(220, 220, 170), // yellow
-    'params': Colors.white,
-    'attr': Color.fromRGB(156, 220, 254), // light blue
-    'variable': Color.fromRGB(156, 220, 254), // light blue
-    'property': Color.fromRGB(156, 220, 254), // light blue
-    'tag': Color.fromRGB(86, 156, 214), // blue
-    'name': Color.fromRGB(78, 201, 176), // cyan
-    'operator': Colors.white,
-    'punctuation': Colors.white,
-  };
 
   // Language mapping from file extensions
   static final Map<String, String> _languageMap = {
@@ -67,7 +47,14 @@ class SyntaxHighlighter {
   }
 
   /// Highlight code and return a TextSpan
-  static TextSpan highlightCode(String code, String language, {Color? backgroundColor}) {
+  ///
+  /// [syntaxColors] provides theme-aware colors for syntax highlighting.
+  static TextSpan highlightCode(
+    String code,
+    String language, {
+    Color? backgroundColor,
+    required VideSyntaxColors syntaxColors,
+  }) {
     try {
       // Register common languages
       _registerLanguages();
@@ -76,12 +63,16 @@ class SyntaxHighlighter {
       final result = highlight.parse(code, languageId: language);
 
       // Convert to TextSpan
-      return _convertNodesToTextSpan(result.rootNode.children, backgroundColor: backgroundColor);
+      return _convertNodesToTextSpan(
+        result.rootNode.children,
+        backgroundColor: backgroundColor,
+        syntaxColors: syntaxColors,
+      );
     } catch (e) {
       // Fallback to plain text if highlighting fails
       return TextSpan(
         text: code,
-        style: TextStyle(color: Colors.white, backgroundColor: backgroundColor),
+        style: TextStyle(color: syntaxColors.plain, backgroundColor: backgroundColor),
       );
     }
   }
@@ -110,7 +101,11 @@ class SyntaxHighlighter {
   }
 
   /// Convert highlight.js nodes to nocterm TextSpan
-  static TextSpan _convertNodesToTextSpan(List<Node> nodes, {Color? backgroundColor}) {
+  static TextSpan _convertNodesToTextSpan(
+    List<Node> nodes, {
+    Color? backgroundColor,
+    required VideSyntaxColors syntaxColors,
+  }) {
     if (nodes.isEmpty) {
       return TextSpan(
         text: '',
@@ -124,7 +119,9 @@ class SyntaxHighlighter {
       if (node.value != null && node.value!.isNotEmpty) {
         // Leaf node with text content
         final className = node.className;
-        final color = className != null ? _getColorForClass(className) : Colors.white;
+        final color = className != null
+            ? _getColorForClass(className, syntaxColors)
+            : syntaxColors.plain;
 
         children.add(
           TextSpan(
@@ -136,7 +133,11 @@ class SyntaxHighlighter {
 
       if (node.children.isNotEmpty) {
         // Node with children - recursively process them
-        final childrenSpans = _convertNodesToTextSpan(node.children, backgroundColor: backgroundColor);
+        final childrenSpans = _convertNodesToTextSpan(
+          node.children,
+          backgroundColor: backgroundColor,
+          syntaxColors: syntaxColors,
+        );
 
         // If childrenSpans has children, add them all
         if (childrenSpans.children != null) {
@@ -158,21 +159,32 @@ class SyntaxHighlighter {
     );
   }
 
-  /// Get color for a given class name
-  static Color _getColorForClass(String className) {
-    // Try exact match first
-    if (_colorScheme.containsKey(className)) {
-      return _colorScheme[className]!;
+  /// Get color for a given class name using theme-aware syntax colors.
+  static Color _getColorForClass(String className, VideSyntaxColors syntaxColors) {
+    // Map highlight.js class names to theme syntax colors
+    if (className.contains('keyword') || className.contains('built_in') || className.contains('tag')) {
+      return syntaxColors.keyword;
+    }
+    if (className.contains('type') || className.contains('class') || className.contains('name')) {
+      return syntaxColors.type;
+    }
+    if (className.contains('string')) {
+      return syntaxColors.string;
+    }
+    if (className.contains('number') || className.contains('literal')) {
+      return syntaxColors.number;
+    }
+    if (className.contains('comment')) {
+      return syntaxColors.comment;
+    }
+    if (className.contains('function') || className.contains('title')) {
+      return syntaxColors.function;
+    }
+    if (className.contains('variable') || className.contains('attr') || className.contains('property')) {
+      return syntaxColors.variable;
     }
 
-    // Try common prefixes/substrings
-    for (final key in _colorScheme.keys) {
-      if (className.contains(key)) {
-        return _colorScheme[key]!;
-      }
-    }
-
-    // Default to white
-    return Colors.white;
+    // Default to plain text color
+    return syntaxColors.plain;
   }
 }

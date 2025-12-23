@@ -1,6 +1,7 @@
 import 'package:nocterm/nocterm.dart';
 import 'package:vide_core/vide_core.dart';
 import 'package:vide_cli/constants/text_opacity.dart';
+import 'package:vide_cli/theme/theme.dart';
 
 class NetworkSummaryComponent extends StatefulComponent {
   final AgentNetwork network;
@@ -21,10 +22,11 @@ class NetworkSummaryComponent extends StatefulComponent {
 class _NetworkSummaryComponentState extends State<NetworkSummaryComponent> {
   @override
   Component build(BuildContext context) {
-    return _buildSummary();
+    return _buildSummary(context);
   }
 
-  Component _buildSummary() {
+  Component _buildSummary(BuildContext context) {
+    final theme = VideTheme.of(context);
     final network = component.network;
     final displayName = network.goal;
     final agentCount = network.agents.length;
@@ -32,13 +34,13 @@ class _NetworkSummaryComponentState extends State<NetworkSummaryComponent> {
     final timeAgo = _formatTimeAgo(lastActive);
 
     final textColor = component.selected
-        ? Colors.white.withOpacity(TextOpacity.secondary)
-        : Colors.white.withOpacity(TextOpacity.tertiary);
+        ? theme.base.onSurface.withOpacity(TextOpacity.secondary)
+        : theme.base.onSurface.withOpacity(TextOpacity.tertiary);
     final leftBorderColor = component.showDeleteConfirmation
-        ? Colors.red
+        ? theme.base.error
         : component.selected
-            ? Colors.blue
-            : Color(0xFF222222);
+            ? theme.base.primary
+            : theme.base.outline;
 
     return Row(
       children: [
@@ -50,7 +52,7 @@ class _NetworkSummaryComponentState extends State<NetworkSummaryComponent> {
             child: component.showDeleteConfirmation
                 ? Text(
                     'Press backspace again to confirm deletion',
-                    style: TextStyle(color: Colors.red),
+                    style: TextStyle(color: theme.base.error),
                     overflow: TextOverflow.ellipsis,
                   )
                 : Column(
@@ -65,15 +67,15 @@ class _NetworkSummaryComponentState extends State<NetworkSummaryComponent> {
                         children: [
                           Text(
                             '$agentCount agent${agentCount != 1 ? 's' : ''}',
-                            style: TextStyle(color: Colors.white.withOpacity(TextOpacity.tertiary)),
+                            style: TextStyle(color: theme.base.onSurface.withOpacity(TextOpacity.tertiary)),
                           ),
                           Text(
                             ' • ',
-                            style: TextStyle(color: Colors.white.withOpacity(TextOpacity.tertiary)),
+                            style: TextStyle(color: theme.base.onSurface.withOpacity(TextOpacity.tertiary)),
                           ),
                           Text(
                             timeAgo,
-                            style: TextStyle(color: Colors.white.withOpacity(TextOpacity.tertiary)),
+                            style: TextStyle(color: theme.base.onSurface.withOpacity(TextOpacity.tertiary)),
                           ),
                         ],
                       ),

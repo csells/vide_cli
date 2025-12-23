@@ -5,6 +5,7 @@ import 'package:vide_cli/modules/agent_network/state/console_title_provider.dart
 import 'package:vide_cli/modules/setup/setup_scope.dart';
 import 'package:vide_cli/modules/setup/welcome_scope.dart';
 import 'package:vide_cli/modules/permissions/permission_service.dart';
+import 'package:vide_cli/theme/theme.dart';
 import 'package:vide_core/vide_core.dart';
 import 'package:vide_cli/modules/agent_network/state/agent_networks_state_notifier.dart';
 import 'package:vide_cli/hook_handler.dart';
@@ -51,10 +52,14 @@ class VideApp extends StatelessComponent {
   Component build(BuildContext context) {
     return NoctermApp(
       title: context.watch(consoleTitleProvider),
-      child: Padding(
-        padding: EdgeInsets.all(1),
-        child: WelcomeScope(
-          child: SetupScope(child: Navigator(home: NetworksOverviewPage())),
+      // NoctermApp auto-detects terminal brightness and provides TuiTheme
+      // VideTheme.auto() reads from TuiTheme to select light/dark vide colors
+      child: VideTheme.auto(
+        child: Padding(
+          padding: EdgeInsets.all(1),
+          child: WelcomeScope(
+            child: SetupScope(child: Navigator(home: NetworksOverviewPage())),
+          ),
         ),
       ),
     );

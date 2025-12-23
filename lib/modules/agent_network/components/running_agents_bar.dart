@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:claude_api/claude_api.dart';
 import 'package:nocterm/nocterm.dart';
 import 'package:nocterm_riverpod/nocterm_riverpod.dart';
+import 'package:vide_cli/theme/theme.dart';
 import 'package:vide_core/vide_core.dart';
 
 class RunningAgentsBar extends StatelessComponent {
@@ -65,19 +66,20 @@ class _RunningAgentBarItemState extends State<_RunningAgentBarItem> {
     };
   }
 
-  Color _getIndicatorColor(AgentStatus status) {
+  Color _getIndicatorColor(AgentStatus status, VideStatusColors statusColors) {
     return switch (status) {
-      AgentStatus.working => Colors.cyan,
-      AgentStatus.waitingForAgent => Colors.yellow,
-      AgentStatus.waitingForUser => Colors.magenta,
-      AgentStatus.idle => Colors.green,
+      AgentStatus.working => statusColors.working,
+      AgentStatus.waitingForAgent => statusColors.waitingForAgent,
+      AgentStatus.waitingForUser => statusColors.waitingForUser,
+      AgentStatus.idle => statusColors.idle,
     };
   }
 
-  Color _getIndicatorTextColor(AgentStatus status) {
+  Color _getIndicatorTextColor(AgentStatus status, VideThemeData theme) {
+    // Use contrasting text color based on indicator background
     return switch (status) {
       AgentStatus.waitingForAgent => Colors.black,
-      _ => Colors.white,
+      _ => theme.base.onSurface,
     };
   }
 
@@ -112,6 +114,7 @@ class _RunningAgentBarItemState extends State<_RunningAgentBarItem> {
 
   @override
   Component build(BuildContext context) {
+    final theme = VideTheme.of(context);
     final explicitStatus = context.watch(agentStatusProvider(component.agent.id));
 
     // Get the claude client to check conversation state
@@ -121,8 +124,8 @@ class _RunningAgentBarItemState extends State<_RunningAgentBarItem> {
     // Infer actual status - override if conversation says we're idle but status says working
     final status = _inferActualStatus(explicitStatus, conversation);
 
-    final indicatorColor = _getIndicatorColor(status);
-    final indicatorTextColor = _getIndicatorTextColor(status);
+    final indicatorColor = _getIndicatorColor(status, theme.status);
+    final indicatorTextColor = _getIndicatorTextColor(status, theme);
     final statusIndicator = _getStatusIndicator(status);
 
     return Padding(
@@ -137,11 +140,11 @@ class _RunningAgentBarItemState extends State<_RunningAgentBarItem> {
           ),
           Container(
             padding: EdgeInsets.symmetric(horizontal: 1),
-            decoration: BoxDecoration(color: Colors.grey),
+            decoration: BoxDecoration(color: theme.base.surface),
             child: Text(
               _buildAgentDisplayName(component.agent),
               style: TextStyle(
-                color: Colors.white,
+                color: theme.base.onSurface,
                 fontWeight: component.isSelected ? FontWeight.bold : null,
                 decoration: component.isSelected ? TextDecoration.underline : null,
               ),

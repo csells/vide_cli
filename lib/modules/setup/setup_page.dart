@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:nocterm/nocterm.dart';
 import 'package:path/path.dart' as path;
+import 'package:vide_cli/theme/theme.dart';
 import '../settings/local_settings_manager.dart';
 
 class SetupPage extends StatefulComponent {
@@ -80,6 +81,8 @@ class _SetupPageState extends State<SetupPage> {
 
   @override
   Component build(BuildContext context) {
+    final theme = VideTheme.of(context);
+
     return Container(
       padding: EdgeInsets.all(2),
       child: Column(
@@ -89,11 +92,11 @@ class _SetupPageState extends State<SetupPage> {
           Container(
             width: double.infinity,
             padding: EdgeInsets.symmetric(vertical: 1, horizontal: 2),
-            decoration: BoxDecoration(color: Colors.blue),
+            decoration: BoxDecoration(color: theme.base.primary),
             child: Text(
               'Vide CLI Setup',
               style: TextStyle(
-                color: Colors.black,
+                color: theme.base.surface,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -104,12 +107,12 @@ class _SetupPageState extends State<SetupPage> {
           // Explanation
           Text(
             'Vide CLI needs to install a permission hook in your Claude Code settings.',
-            style: TextStyle(color: Colors.white),
+            style: TextStyle(color: theme.base.onSurface),
           ),
           SizedBox(height: 1),
           Text(
             'This hook will intercept tool calls and allow you to approve/deny them.',
-            style: TextStyle(color: Colors.grey),
+            style: TextStyle(color: theme.base.outline),
           ),
 
           SizedBox(height: 2),
@@ -119,7 +122,7 @@ class _SetupPageState extends State<SetupPage> {
             Container(
               padding: EdgeInsets.all(1),
               decoration: BoxDecoration(
-                border: BoxBorder.all(color: Colors.grey),
+                border: BoxBorder.all(color: theme.base.outline),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -127,14 +130,14 @@ class _SetupPageState extends State<SetupPage> {
                   Text(
                     'Changes to be made:',
                     style: TextStyle(
-                      color: Colors.yellow,
+                      color: theme.base.warning,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   SizedBox(height: 1),
                   Text(
                     _diff!.toPrettyString(),
-                    style: TextStyle(color: Colors.green),
+                    style: TextStyle(color: theme.base.success),
                   ),
                 ],
               ),
@@ -146,15 +149,15 @@ class _SetupPageState extends State<SetupPage> {
           if (_error != null) ...[
             Container(
               padding: EdgeInsets.all(1),
-              decoration: BoxDecoration(color: Color(0xFF331111)),
-              child: Text(_error!, style: TextStyle(color: Colors.red)),
+              decoration: BoxDecoration(color: theme.base.error.withOpacity(0.2)),
+              child: Text(_error!, style: TextStyle(color: theme.base.error)),
             ),
             SizedBox(height: 2),
           ],
 
           // Loading state
           if (_isInstalling) ...[
-            Text('Installing hook...', style: TextStyle(color: Colors.yellow)),
+            Text('Installing hook...', style: TextStyle(color: theme.base.warning)),
           ],
 
           // Action buttons
@@ -174,10 +177,10 @@ class _SetupPageState extends State<SetupPage> {
                 children: [
                   Text(
                     '[Enter/Y] Install & Continue',
-                    style: TextStyle(color: Colors.green),
+                    style: TextStyle(color: theme.base.success),
                   ),
                   SizedBox(width: 4),
-                  Text('[N/Esc] Exit', style: TextStyle(color: Colors.red)),
+                  Text('[N/Esc] Exit', style: TextStyle(color: theme.base.error)),
                 ],
               ),
             ),

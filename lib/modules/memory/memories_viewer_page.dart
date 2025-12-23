@@ -1,5 +1,6 @@
 import 'package:nocterm/nocterm.dart';
 import 'package:nocterm_riverpod/nocterm_riverpod.dart';
+import 'package:vide_cli/theme/theme.dart';
 import 'package:vide_core/vide_core.dart';
 
 /// Page to view memories stored for the current project
@@ -44,11 +45,13 @@ class _MemoriesViewerPageState extends State<MemoriesViewerPage> {
 
   @override
   Component build(BuildContext context) {
+    final theme = VideTheme.of(context);
+
     if (_loading) {
       return Container(
         padding: EdgeInsets.all(2),
         child: Center(
-          child: Text('Loading memories...', style: TextStyle(color: Colors.grey)),
+          child: Text('Loading memories...', style: TextStyle(color: theme.base.outline)),
         ),
       );
     }
@@ -70,19 +73,19 @@ class _MemoriesViewerPageState extends State<MemoriesViewerPage> {
           _Badge(
             label: 'Keys',
             value: memories.length.toString(),
-            labelBg: Colors.grey,
-            valueBg: Colors.blue,
-            valueColor: Colors.white,
+            labelBg: theme.base.outline,
+            valueBg: theme.base.primary,
+            valueColor: theme.base.onSurface,
           ),
           SizedBox(height: 1),
           // Help text
-          Text('Esc: back | ↑/↓: navigate', style: TextStyle(color: Colors.grey)),
+          Text('Esc: back | ↑/↓: navigate', style: TextStyle(color: theme.base.outline)),
           SizedBox(height: 2),
           // Content
           Expanded(
             child: memories.isEmpty
                 ? Center(
-                    child: Text('No memories stored yet', style: TextStyle(color: Colors.grey)),
+                    child: Text('No memories stored yet', style: TextStyle(color: theme.base.outline)),
                   )
                 : _MemoryList(
                     memories: memories,
@@ -157,14 +160,16 @@ class _MemoryEntryComponent extends StatelessComponent {
 
   @override
   Component build(BuildContext context) {
+    final theme = VideTheme.of(context);
+
     // Truncate value if too long
     final displayValue = memory.value.length > 100 ? '${memory.value.substring(0, 100)}...' : memory.value;
 
     return Container(
       padding: EdgeInsets.all(1),
       decoration: BoxDecoration(
-        color: selected ? Color(0xFF1E1E1E) : Colors.black,
-        border: BoxBorder.all(color: selected ? Colors.cyan : Colors.black),
+        color: selected ? theme.base.surface : theme.base.surface.withOpacity(0),
+        border: BoxBorder.all(color: selected ? theme.base.primary : theme.base.surface.withOpacity(0)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -172,11 +177,11 @@ class _MemoryEntryComponent extends StatelessComponent {
           // Key
           Text(
             memory.key,
-            style: TextStyle(color: Colors.cyan, fontWeight: FontWeight.bold),
+            style: TextStyle(color: theme.base.primary, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 1),
           // Value
-          Text(displayValue, style: TextStyle(color: Colors.white)),
+          Text(displayValue, style: TextStyle(color: theme.base.onSurface)),
         ],
       ),
     );
@@ -201,13 +206,15 @@ class _Badge extends StatelessComponent {
 
   @override
   Component build(BuildContext context) {
+    final theme = VideTheme.of(context);
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
           padding: EdgeInsets.symmetric(horizontal: 1),
           decoration: BoxDecoration(color: labelBg),
-          child: Text(label, style: TextStyle(color: Colors.white)),
+          child: Text(label, style: TextStyle(color: theme.base.onSurface)),
         ),
         Container(
           padding: EdgeInsets.symmetric(horizontal: 1),

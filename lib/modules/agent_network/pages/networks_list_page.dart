@@ -6,6 +6,8 @@ import 'package:vide_cli/modules/agent_network/network_execution_page.dart';
 import 'package:vide_cli/modules/agent_network/components/network_summary_component.dart';
 import 'package:vide_cli/modules/agent_network/state/agent_networks_state_notifier.dart';
 import 'package:vide_cli/modules/memory/memories_viewer_page.dart';
+import 'package:vide_cli/theme/theme.dart';
+import 'package:vide_cli/constants/text_opacity.dart';
 import 'package:path/path.dart' as path;
 
 class NetworksListPage extends StatefulComponent {
@@ -44,6 +46,7 @@ class _NetworksListPageState extends State<NetworksListPage> {
 
   @override
   Component build(BuildContext context) {
+    final theme = VideTheme.of(context);
     final allNetworks = context.watch(agentNetworksStateNotifierProvider).networks;
 
     // Get current directory name
@@ -82,7 +85,7 @@ class _NetworksListPageState extends State<NetworksListPage> {
           // Help text
           Text(
             'Esc: home | Backspace×2: delete | V: view memories',
-            style: TextStyle(color: Colors.grey),
+            style: TextStyle(color: theme.base.onSurface.withOpacity(TextOpacity.tertiary)),
           ),
           SizedBox(height: 2),
           Expanded(child: _NetworksListContent(networks: allNetworks)),
@@ -118,9 +121,14 @@ class _NetworksListContentState extends State<_NetworksListContent> {
 
   @override
   Component build(BuildContext context) {
+    final theme = VideTheme.of(context);
+
     if (component.networks.isEmpty) {
       return Center(
-        child: Text('No networks yet. Press Esc to create one.', style: TextStyle(color: Colors.grey)),
+        child: Text(
+          'No networks yet. Press Esc to create one.',
+          style: TextStyle(color: theme.base.onSurface.withOpacity(TextOpacity.tertiary)),
+        ),
       );
     }
 
@@ -196,20 +204,22 @@ class _MemoryBadge extends StatelessComponent {
 
   @override
   Component build(BuildContext context) {
+    final theme = VideTheme.of(context);
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
           padding: EdgeInsets.symmetric(horizontal: 1),
-          decoration: BoxDecoration(color: Colors.grey),
-          child: Text('Memory', style: TextStyle(color: Colors.white)),
+          decoration: BoxDecoration(color: theme.base.outline),
+          child: Text('Memory', style: TextStyle(color: theme.base.onSurface)),
         ),
         Container(
           padding: EdgeInsets.symmetric(horizontal: 1),
-          decoration: BoxDecoration(color: count > 0 ? Colors.green : Colors.black),
+          decoration: BoxDecoration(color: count > 0 ? theme.base.success : theme.base.surface),
           child: Text(
             count.toString(),
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            style: TextStyle(color: theme.base.onSurface, fontWeight: FontWeight.bold),
           ),
         ),
       ],

@@ -1,6 +1,7 @@
 import 'package:nocterm/nocterm.dart';
 import 'package:nocterm/src/components/rich_text.dart';
 import 'package:vide_cli/constants/text_opacity.dart';
+import 'package:vide_cli/theme/theme.dart';
 import 'package:vide_cli/utils/syntax_highlighter.dart';
 
 enum DiffLineType { added, removed, unchanged, header }
@@ -27,6 +28,7 @@ class CodeDiff extends StatelessComponent {
 
   @override
   Component build(BuildContext context) {
+    final theme = VideTheme.of(context);
     final children = <Component>[];
 
     // Calculate max line number width for alignment
@@ -40,7 +42,7 @@ class CodeDiff extends StatelessComponent {
 
     // Add diff lines
     for (final line in lines) {
-      children.add(_buildDiffLine(line, lineNumberWidth));
+      children.add(_buildDiffLine(theme, line, lineNumberWidth));
     }
 
     return Container(
@@ -52,52 +54,56 @@ class CodeDiff extends StatelessComponent {
     );
   }
 
-  Component _buildDiffLine(DiffLine line, int lineNumberWidth) {
+  Component _buildDiffLine(VideThemeData theme, DiffLine line, int lineNumberWidth) {
     switch (line.type) {
       case DiffLineType.header:
         return Container(
           padding: EdgeInsets.symmetric(vertical: 1),
-          child: Text(line.content, style: TextStyle(color: Colors.cyan)),
+          child: Text(line.content, style: TextStyle(color: theme.diff.header)),
         );
 
       case DiffLineType.added:
         return _buildCodeLine(
+          theme: theme,
           lineNumber: line.lineNumber,
           lineNumberWidth: lineNumberWidth,
           prefix: '+',
           content: line.content,
-          prefixColor: Colors.green,
-          contentColor: Colors.white,
-          backgroundColor: Color(0xFF0D3D0D),
+          prefixColor: theme.diff.addedPrefix,
+          contentColor: theme.base.onSurface,
+          backgroundColor: theme.diff.addedBackground,
           language: line.language,
         );
 
       case DiffLineType.removed:
         return _buildCodeLine(
+          theme: theme,
           lineNumber: line.lineNumber,
           lineNumberWidth: lineNumberWidth,
           prefix: '-',
           content: line.content,
-          prefixColor: Colors.red,
-          contentColor: Colors.white,
-          backgroundColor: Color(0xFF3D0D0D),
+          prefixColor: theme.diff.removedPrefix,
+          contentColor: theme.base.onSurface,
+          backgroundColor: theme.diff.removedBackground,
           language: line.language,
         );
 
       case DiffLineType.unchanged:
         return _buildCodeLine(
+          theme: theme,
           lineNumber: line.lineNumber,
           lineNumberWidth: lineNumberWidth,
           prefix: ' ',
           content: line.content,
-          prefixColor: Colors.grey,
-          contentColor: Colors.white,
+          prefixColor: theme.diff.contextPrefix,
+          contentColor: theme.base.onSurface,
           language: line.language,
         );
     }
   }
 
   Component _buildCodeLine({
+    required VideThemeData theme,
     required int? lineNumber,
     required int lineNumberWidth,
     required String prefix,
@@ -117,7 +123,7 @@ class CodeDiff extends StatelessComponent {
         Text(
           lineNumberStr,
           style: TextStyle(
-            color: Colors.white.withOpacity(TextOpacity.tertiary),
+            color: theme.base.onSurface.withOpacity(TextOpacity.tertiary),
           ),
         ),
 
@@ -145,6 +151,7 @@ class CodeDiff extends StatelessComponent {
                       content,
                       language,
                       backgroundColor: backgroundColor,
+                      syntaxColors: theme.syntax,
                     ),
                   )
                 : Text(

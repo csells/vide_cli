@@ -425,20 +425,16 @@ packages:
   nocterm:
     dependency: "direct main"
     description:
-      path: "."
-      ref: a3dbf0afedbcfc328b6b431d9425213248b0aa5d
-      resolved-ref: a3dbf0afedbcfc328b6b431d9425213248b0aa5d
-      url: "https://github.com/Norbert515/nocterm.git"
-    source: git
+      path: "../nocterm"
+      relative: true
+    source: path
     version: "0.1.0"
   nocterm_riverpod:
     dependency: "direct main"
     description:
-      path: "packages/nocterm_riverpod"
-      ref: a3dbf0afedbcfc328b6b431d9425213248b0aa5d
-      resolved-ref: a3dbf0afedbcfc328b6b431d9425213248b0aa5d
-      url: "https://github.com/Norbert515/nocterm.git"
-    source: git
+      path: "../nocterm/packages/nocterm_riverpod"
+      relative: true
+    source: path
     version: "0.0.1"
   node_preamble:
     dependency: transitive

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:claude_api/claude_api.dart';
 import 'package:nocterm/nocterm.dart';
 import 'package:vide_cli/constants/text_opacity.dart';
+import 'package:vide_cli/theme/theme.dart';
 
 /// Welcome page shown on first run of Vide CLI.
 /// Tests Claude Code availability and shows an animated introduction.
@@ -188,6 +189,8 @@ class _WelcomePageState extends State<WelcomePage> {
 
   @override
   Component build(BuildContext context) {
+    final theme = VideTheme.of(context);
+
     return KeyboardListener(
       autofocus: true,
       onKeyEvent: (key) {
@@ -205,44 +208,44 @@ class _WelcomePageState extends State<WelcomePage> {
         child: Container(
           width: _boxWidth,
           decoration: BoxDecoration(
-            border: BoxBorder.all(color: Colors.grey),
+            border: BoxBorder.all(color: theme.base.outline),
           ),
           padding: EdgeInsets.symmetric(horizontal: 2, vertical: 1),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               // ASCII Logo
-              ..._buildLogo(),
+              ..._buildLogo(theme),
               SizedBox(height: 1),
 
               // Tagline
               Text(
                 'Your AI-powered terminal IDE',
                 style: TextStyle(
-                  color: Colors.white.withOpacity(TextOpacity.secondary),
+                  color: theme.base.onSurface.withOpacity(TextOpacity.secondary),
                 ),
               ),
               SizedBox(height: 2),
 
               // Verification checklist
-              _buildChecklist(),
+              _buildChecklist(theme),
 
               // Claude response area (if complete)
               if (_step == _VerificationStep.complete) ...[
                 SizedBox(height: 2),
-                _buildClaudeResponse(),
+                _buildClaudeResponse(theme),
               ],
 
               // Error area
               if (_step == _VerificationStep.error) ...[
                 SizedBox(height: 1),
-                _buildError(),
+                _buildError(theme),
               ],
 
               SizedBox(height: 2),
 
               // Footer
-              _buildFooter(),
+              _buildFooter(theme),
             ],
           ),
         ),
@@ -250,19 +253,19 @@ class _WelcomePageState extends State<WelcomePage> {
     );
   }
 
-  List<Component> _buildLogo() {
+  List<Component> _buildLogo(VideThemeData theme) {
     return _logo.map((line) {
       return Text(
         line,
         style: TextStyle(
-          color: Colors.cyan,
+          color: theme.base.primary,
           fontWeight: FontWeight.bold,
         ),
       );
     }).toList();
   }
 
-  Component _buildChecklist() {
+  Component _buildChecklist(VideThemeData theme) {
     final isConfirmingConnection = _step == _VerificationStep.testingClaude;
     final connectionLabel = isConfirmingConnection ? 'Confirming connection' : 'Connection confirmed';
 
@@ -271,6 +274,7 @@ class _WelcomePageState extends State<WelcomePage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildChecklistItem(
+          theme,
           'Claude Code found',
           isComplete: _claudeFound,
           isActive: _step == _VerificationStep.findingClaude,
@@ -278,9 +282,10 @@ class _WelcomePageState extends State<WelcomePage> {
         ),
         SizedBox(height: 1),
         if (isConfirmingConnection)
-          _buildShimmerChecklistItem(connectionLabel)
+          _buildShimmerChecklistItem(theme, connectionLabel)
         else
           _buildChecklistItem(
+            theme,
             connectionLabel,
             isComplete: _step == _VerificationStep.complete,
             isActive: false,
@@ -291,6 +296,7 @@ class _WelcomePageState extends State<WelcomePage> {
   }
 
   Component _buildChecklistItem(
+    VideThemeData theme,
     String label, {
     required bool isComplete,
     required bool isActive,
@@ -302,20 +308,20 @@ class _WelcomePageState extends State<WelcomePage> {
 
     if (hasError) {
       icon = '✗';
-      iconColor = Colors.red;
-      textColor = Colors.red;
+      iconColor = theme.base.error;
+      textColor = theme.base.error;
     } else if (isComplete) {
       icon = '✓';
-      iconColor = Colors.green;
-      textColor = Colors.white;
+      iconColor = theme.base.success;
+      textColor = theme.base.onSurface;
     } else if (isActive) {
       icon = '○';
-      iconColor = Colors.yellow;
-      textColor = Colors.yellow;
+      iconColor = theme.base.warning;
+      textColor = theme.base.warning;
     } else {
       icon = '○';
-      iconColor = Colors.grey;
-      textColor = Colors.grey;
+      iconColor = theme.base.outline;
+      textColor = theme.base.outline;
     }
 
     return Row(
@@ -328,13 +334,13 @@ class _WelcomePageState extends State<WelcomePage> {
           style: TextStyle(color: textColor),
         ),
         if (isActive) ...[
-          Text('...', style: TextStyle(color: Colors.yellow)),
+          Text('...', style: TextStyle(color: theme.base.warning)),
         ],
       ],
     );
   }
 
-  Component _buildShimmerChecklistItem(String label) {
+  Component _buildShimmerChecklistItem(VideThemeData theme, String label) {
     final chars = <Component>[];
 
     for (int i = 0; i < label.length; i++) {
@@ -342,13 +348,13 @@ class _WelcomePageState extends State<WelcomePage> {
       Color color;
 
       if (distFromShimmer == 0) {
-        color = Colors.white;
+        color = theme.base.onSurface;
       } else if (distFromShimmer == 1) {
-        color = Colors.cyan;
+        color = theme.base.primary;
       } else if (distFromShimmer == 2) {
-        color = Colors.yellow.withOpacity(0.8);
+        color = theme.base.warning.withOpacity(0.8);
       } else {
-        color = Colors.yellow.withOpacity(0.6);
+        color = theme.base.warning.withOpacity(0.6);
       }
 
       chars.add(Text(label[i], style: TextStyle(color: color)));
@@ -357,15 +363,15 @@ class _WelcomePageState extends State<WelcomePage> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text('○', style: TextStyle(color: Colors.yellow)),
+        Text('○', style: TextStyle(color: theme.base.warning)),
         SizedBox(width: 2),
         ...chars,
-        Text('...', style: TextStyle(color: Colors.yellow)),
+        Text('...', style: TextStyle(color: theme.base.warning)),
       ],
     );
   }
 
-  Component _buildClaudeResponse() {
+  Component _buildClaudeResponse(VideThemeData theme) {
     if (_displayedResponse.isEmpty) {
       return Text('');
     }
@@ -374,7 +380,7 @@ class _WelcomePageState extends State<WelcomePage> {
       width: (_textWidth + 4).toDouble(),
       padding: EdgeInsets.all(1),
       decoration: BoxDecoration(
-        border: BoxBorder.all(color: Colors.grey),
+        border: BoxBorder.all(color: theme.base.outline),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -383,42 +389,42 @@ class _WelcomePageState extends State<WelcomePage> {
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Claude', style: TextStyle(color: Colors.cyan, fontWeight: FontWeight.bold)),
-              Text(' says:', style: TextStyle(color: Colors.grey)),
+              Text('Claude', style: TextStyle(color: theme.base.primary, fontWeight: FontWeight.bold)),
+              Text(' says:', style: TextStyle(color: theme.base.outline)),
             ],
           ),
           SizedBox(height: 1),
           Text(
             _displayedResponse,
-            style: TextStyle(color: Colors.white.withOpacity(TextOpacity.secondary)),
+            style: TextStyle(color: theme.base.onSurface.withOpacity(TextOpacity.secondary)),
           ),
         ],
       ),
     );
   }
 
-  Component _buildError() {
+  Component _buildError(VideThemeData theme) {
     return Container(
       width: (_textWidth + 4).toDouble(),
       padding: EdgeInsets.all(1),
       decoration: BoxDecoration(
-        border: BoxBorder.all(color: Colors.red),
+        border: BoxBorder.all(color: theme.base.error),
       ),
       child: Text(
         _errorMessage ?? 'Unknown error',
-        style: TextStyle(color: Colors.red),
+        style: TextStyle(color: theme.base.error),
       ),
     );
   }
 
-  Component _buildFooter() {
+  Component _buildFooter(VideThemeData theme) {
     if (_step == _VerificationStep.error) {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('[', style: TextStyle(color: Colors.grey)),
-          Text('R', style: TextStyle(color: Colors.yellow)),
-          Text('] Retry', style: TextStyle(color: Colors.grey)),
+          Text('[', style: TextStyle(color: theme.base.outline)),
+          Text('R', style: TextStyle(color: theme.base.warning)),
+          Text('] Retry', style: TextStyle(color: theme.base.outline)),
         ],
       );
     }
@@ -427,14 +433,14 @@ class _WelcomePageState extends State<WelcomePage> {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('Press ', style: TextStyle(color: Colors.grey)),
-          Text('Enter', style: TextStyle(color: Colors.green)),
-          Text(' to continue', style: TextStyle(color: Colors.grey)),
+          Text('Press ', style: TextStyle(color: theme.base.outline)),
+          Text('Enter', style: TextStyle(color: theme.base.success)),
+          Text(' to continue', style: TextStyle(color: theme.base.outline)),
         ],
       );
     }
 
     // Show nothing while loading
-    return Text('', style: TextStyle(color: Colors.grey));
+    return Text('', style: TextStyle(color: theme.base.outline));
   }
 }

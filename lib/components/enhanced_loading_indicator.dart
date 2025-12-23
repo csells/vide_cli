@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:nocterm/nocterm.dart';
 import 'package:vide_cli/constants/text_opacity.dart';
+import 'package:vide_cli/theme/theme.dart';
 
 class EnhancedLoadingIndicator extends StatefulComponent {
   const EnhancedLoadingIndicator({super.key});
@@ -119,6 +120,7 @@ class _EnhancedLoadingIndicatorState extends State<EnhancedLoadingIndicator> {
 
   @override
   Component build(BuildContext context) {
+    final theme = VideTheme.of(context);
     final braille = _brailleFrames[_frameIndex];
     final activity = _activities[_activityIndex];
 
@@ -128,17 +130,18 @@ class _EnhancedLoadingIndicatorState extends State<EnhancedLoadingIndicator> {
         Text(
           braille,
           style: TextStyle(
-            color: Colors.white.withOpacity(TextOpacity.secondary),
+            color: theme.base.onSurface.withOpacity(TextOpacity.secondary),
           ),
         ),
         SizedBox(width: 1),
         // Activity text with shimmer
-        _buildShimmerText(activity),
+        _buildShimmerText(context, activity),
       ],
     );
   }
 
-  Component _buildShimmerText(String text) {
+  Component _buildShimmerText(BuildContext context, String text) {
+    final theme = VideTheme.of(context);
     final components = <Component>[];
 
     for (int i = 0; i < text.length; i++) {
@@ -146,9 +149,9 @@ class _EnhancedLoadingIndicatorState extends State<EnhancedLoadingIndicator> {
 
       // Single letter shimmer effect
       if (i == _shimmerPosition) {
-        color = Colors.white;
+        color = theme.base.onSurface;
       } else {
-        color = Colors.white.withOpacity(TextOpacity.secondary);
+        color = theme.base.onSurface.withOpacity(TextOpacity.secondary);
       }
 
       components.add(Text(text[i], style: TextStyle(color: color)));

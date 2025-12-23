@@ -13,11 +13,11 @@ dependencies:
   nocterm:
     git:
       url: https://github.com/Norbert515/nocterm.git
-      ref: a3dbf0afedbcfc328b6b431d9425213248b0aa5d
+      ref: a3f4612b88f044ccdb6824dd5a03cc1ccc3c2307
   nocterm_riverpod:
     git:
       url: https://github.com/Norbert515/nocterm.git
-      ref: a3dbf0afedbcfc328b6b431d9425213248b0aa5d
+      ref: a3f4612b88f044ccdb6824dd5a03cc1ccc3c2307
       path: packages/nocterm_riverpod
   claude_api:
     path: ./packages/claude_api

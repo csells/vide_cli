@@ -3,6 +3,7 @@ import 'package:nocterm/nocterm.dart';
 import 'package:claude_api/claude_api.dart';
 import 'package:path/path.dart' as path;
 import 'package:vide_cli/constants/text_opacity.dart';
+import 'package:vide_cli/theme/theme.dart';
 
 /// A text field that automatically detects image paths, converts them to attachments,
 /// and provides a complete Message object on submit.
@@ -99,6 +100,8 @@ class _AttachmentTextFieldState extends State<AttachmentTextField> {
 
   @override
   Component build(BuildContext context) {
+    final theme = VideTheme.of(context);
+
     return Focusable(
       focused: component.focused,
       onKeyEvent: (event) {
@@ -133,7 +136,7 @@ class _AttachmentTextFieldState extends State<AttachmentTextField> {
                       _controller.attachments[i].type == 'image'
                           ? '📎 ${path.basename(_controller.attachments[i].path ?? "image")}'
                           : '📎 Pasted content (${_controller.attachments[i].content?.length ?? 0} chars)',
-                      style: TextStyle(color: Colors.white.withOpacity(TextOpacity.secondary)),
+                      style: TextStyle(color: theme.base.onSurface.withOpacity(TextOpacity.secondary)),
                     ),
                     if (i < _controller.attachments.length - 1) SizedBox(width: 2),
                   ],
@@ -144,13 +147,13 @@ class _AttachmentTextFieldState extends State<AttachmentTextField> {
           // Text field
           Container(
             padding: EdgeInsets.symmetric(horizontal: 1),
-            decoration: BoxDecoration(border: BoxBorder.all(color: Colors.grey)),
+            decoration: BoxDecoration(border: BoxBorder.all(color: theme.base.outline)),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Agent tag (if provided)
                 if (component.agentTag != null) ...[component.agentTag!, SizedBox(width: 1)],
-                Text('>', style: TextStyle(color: Colors.white)),
+                Text('>', style: TextStyle(color: theme.base.onSurface)),
                 SizedBox(width: 1),
                 Expanded(
                   child: TextField(
@@ -159,9 +162,9 @@ class _AttachmentTextFieldState extends State<AttachmentTextField> {
                     focused: component.focused,
                     cursorBlinkRate: null,
                     maxLines: null,
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(color: theme.base.onSurface),
                     placeholder: component.placeholder ?? 'Type a message...',
-                    placeholderStyle: TextStyle(color: Colors.white.withOpacity(TextOpacity.tertiary)),
+                    placeholderStyle: TextStyle(color: theme.base.onSurface.withOpacity(TextOpacity.tertiary)),
                     onPaste: _controller.handlePaste,
                     onSubmitted: (_) {
                       _handleSubmit();

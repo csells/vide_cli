@@ -15,6 +15,7 @@ import 'package:vide_core/vide_core.dart' hide PermissionRequest, PermissionResp
 import 'package:vide_cli/modules/permissions/permission_service.dart';
 import 'package:vide_cli/modules/settings/local_settings_manager.dart';
 import 'package:vide_cli/modules/settings/pattern_inference.dart';
+import 'package:vide_cli/theme/theme.dart';
 import '../permissions/permission_scope.dart';
 import '../../components/typing_text.dart';
 
@@ -256,6 +257,8 @@ class _AgentChatState extends State<_AgentChat> {
 
   @override
   Component build(BuildContext context) {
+    final theme = VideTheme.of(context);
+
     // Get the current permission queue state from the provider
     final permissionQueueState = context.watch(permissionStateProvider);
     final currentPermissionRequest = permissionQueueState.current;
@@ -277,7 +280,7 @@ class _AgentChatState extends State<_AgentChat> {
                 children: [
                   // Todo list at the end (first in reversed list)
                   if (_getLatestTodos() case final todos? when todos.isNotEmpty) TodoListComponent(todos: todos),
-                  for (final message in _conversation.messages.reversed) _buildMessage(message),
+                  for (final message in _conversation.messages.reversed) _buildMessage(context, message),
                 ],
               ),
             ),
@@ -297,7 +300,7 @@ class _AgentChatState extends State<_AgentChat> {
                       SizedBox(width: 2),
                       Text(
                         '(Press ESC to stop)',
-                        style: TextStyle(color: Colors.white.withOpacity(TextOpacity.tertiary)),
+                        style: TextStyle(color: theme.base.onSurface.withOpacity(TextOpacity.tertiary)),
                       ),
                     ],
                   ),
@@ -306,7 +309,7 @@ class _AgentChatState extends State<_AgentChat> {
                 if (component.showQuitWarning)
                   Text(
                     '(Press Ctrl+C again to quit)',
-                    style: TextStyle(color: Colors.white.withOpacity(TextOpacity.tertiary)),
+                    style: TextStyle(color: theme.base.onSurface.withOpacity(TextOpacity.tertiary)),
                   ),
 
                 // Show permission dialog if there's an active request, otherwise show text field
@@ -321,7 +324,7 @@ class _AgentChatState extends State<_AgentChat> {
                           padding: EdgeInsets.symmetric(horizontal: 1, vertical: 0),
                           child: Text(
                             'Permission 1 of ${permissionQueueState.queueLength} (${permissionQueueState.queueLength - 1} more in queue)',
-                            style: TextStyle(color: Colors.yellow, fontWeight: FontWeight.bold),
+                            style: TextStyle(color: theme.base.warning, fontWeight: FontWeight.bold),
                           ),
                         ),
                       PermissionDialog.fromRequest(
@@ -349,19 +352,21 @@ class _AgentChatState extends State<_AgentChat> {
     );
   }
 
-  Component _buildMessage(ConversationMessage message) {
+  Component _buildMessage(BuildContext context, ConversationMessage message) {
+    final theme = VideTheme.of(context);
+
     if (message.role == MessageRole.user) {
       return Container(
         padding: EdgeInsets.only(bottom: 1),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('> ${message.content}', style: TextStyle(color: Colors.white)),
+            Text('> ${message.content}', style: TextStyle(color: theme.base.onSurface)),
             if (message.attachments != null && message.attachments!.isNotEmpty)
               for (var attachment in message.attachments!)
                 Text(
                   '  📎 ${attachment.path ?? "image"}',
-                  style: TextStyle(color: Colors.white.withOpacity(TextOpacity.secondary)),
+                  style: TextStyle(color: theme.base.onSurface.withOpacity(TextOpacity.secondary)),
                 ),
           ],
         ),
@@ -419,7 +424,7 @@ class _AgentChatState extends State<_AgentChat> {
             widgets.add(
               Container(
                 padding: EdgeInsets.only(left: 2, top: 1),
-                child: Text('[orphaned result: ${response.content}]', style: TextStyle(color: Colors.red)),
+                child: Text('[orphaned result: ${response.content}]', style: TextStyle(color: theme.base.error)),
               ),
             );
           }
@@ -440,7 +445,7 @@ class _AgentChatState extends State<_AgentChat> {
                 padding: EdgeInsets.only(left: 2, top: 1),
                 child: Text(
                   '[error: ${message.error}]',
-                  style: TextStyle(color: Colors.white.withOpacity(TextOpacity.secondary)),
+                  style: TextStyle(color: theme.base.onSurface.withOpacity(TextOpacity.secondary)),
                 ),
               ),
           ],

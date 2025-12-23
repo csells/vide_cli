@@ -1,6 +1,7 @@
 import 'package:nocterm/nocterm.dart';
 import 'package:claude_api/claude_api.dart';
 import 'package:vide_cli/constants/text_opacity.dart';
+import 'package:vide_cli/theme/theme.dart';
 import 'package:vide_core/vide_core.dart';
 import 'package:path/path.dart' as p;
 
@@ -27,6 +28,7 @@ class DefaultRenderer extends StatefulComponent {
 class _DefaultRendererState extends State<DefaultRenderer> {
   @override
   Component build(BuildContext context) {
+    final theme = VideTheme.of(context);
     final hasResult = component.invocation.hasResult;
 
     final isError = component.invocation.isError;
@@ -36,18 +38,20 @@ class _DefaultRendererState extends State<DefaultRenderer> {
     final String statusIndicator;
 
     if (!hasResult) {
-      // Yellow: Pending or in-progress (no result yet)
-      statusColor = Colors.yellow;
+      // Pending or in-progress (no result yet)
+      statusColor = theme.status.inProgress;
       statusIndicator = '●';
     } else if (isError) {
-      // Red: Error, denied, or blocked by hook
-      statusColor = Colors.red;
+      // Error, denied, or blocked by hook
+      statusColor = theme.status.error;
       statusIndicator = '●';
     } else {
-      // Green: Successful completion
-      statusColor = Colors.green;
+      // Successful completion
+      statusColor = theme.status.completed;
       statusIndicator = '●';
     }
+
+    final textColor = theme.base.onSurface;
 
     return Container(
       padding: EdgeInsets.only(bottom: 1),
@@ -61,24 +65,24 @@ class _DefaultRendererState extends State<DefaultRenderer> {
               Text(statusIndicator, style: TextStyle(color: statusColor)),
               SizedBox(width: 1),
               // Tool name
-              Text(component.invocation.displayName, style: TextStyle(color: Colors.white)),
+              Text(component.invocation.displayName, style: TextStyle(color: textColor)),
               if (component.invocation.parameters.isNotEmpty) ...[
                 Flexible(
                   child: Text(
                     '(${_getParameterPreview()}',
-                    style: TextStyle(color: Colors.white.withOpacity(TextOpacity.tertiary)),
+                    style: TextStyle(color: textColor.withOpacity(TextOpacity.tertiary)),
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
                   ),
                 ),
-                Text(')', style: TextStyle(color: Colors.white.withOpacity(TextOpacity.tertiary))),
+                Text(')', style: TextStyle(color: textColor.withOpacity(TextOpacity.tertiary))),
               ],
             ],
           ),
 
           // Result content
           if (hasResult && _shouldShowResultPreview())
-            Container(padding: EdgeInsets.only(left: 2), child: _buildResultView()),
+            Container(padding: EdgeInsets.only(left: 2), child: _buildResultView(theme)),
         ],
       ),
     );
@@ -89,17 +93,18 @@ class _DefaultRendererState extends State<DefaultRenderer> {
     return component.invocation.toolName != 'Read' && component.invocation.toolName != 'Grep';
   }
 
-  Component _buildResultView() {
+  Component _buildResultView(VideThemeData theme) {
     final preview = _getResultPreview();
+    final textColor = theme.base.onSurface;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('⎿  ', style: TextStyle(color: Colors.white.withOpacity(TextOpacity.secondary))),
+        Text('⎿  ', style: TextStyle(color: textColor.withOpacity(TextOpacity.secondary))),
         Expanded(
           child: Text(
             preview,
-            style: TextStyle(color: Colors.white.withOpacity(TextOpacity.secondary)),
+            style: TextStyle(color: textColor.withOpacity(TextOpacity.secondary)),
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
           ),

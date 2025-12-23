@@ -1,5 +1,6 @@
 import 'package:nocterm/nocterm.dart';
 import 'package:vide_cli/constants/text_opacity.dart';
+import 'package:vide_cli/theme/theme.dart';
 
 /// Reusable component for displaying a todo list.
 /// Shows tasks with status icons and color coding.
@@ -31,6 +32,8 @@ class TodoListComponent extends StatelessComponent {
       return SizedBox();
     }
 
+    final theme = VideTheme.of(context);
+
     return Container(
       padding: EdgeInsets.only(bottom: 1),
       child: Column(
@@ -39,12 +42,12 @@ class TodoListComponent extends StatelessComponent {
           // Header
           Row(
             children: [
-              Text('●', style: TextStyle(color: Color(0xFFE5C07B))),
+              Text('●', style: TextStyle(color: theme.status.inProgress)),
               SizedBox(width: 1),
-              Text('Tasks', style: TextStyle(color: Colors.white)),
+              Text('Tasks', style: TextStyle(color: theme.base.onSurface)),
               Text(
                 ' (${todos.length} ${todos.length == 1 ? 'item' : 'items'})',
-                style: TextStyle(color: Colors.white.withOpacity(TextOpacity.tertiary)),
+                style: TextStyle(color: theme.base.onSurface.withOpacity(TextOpacity.tertiary)),
               ),
             ],
           ),
@@ -55,7 +58,7 @@ class TodoListComponent extends StatelessComponent {
               padding: EdgeInsets.only(left: 2),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [for (final todo in todos) _buildTodoItem(todo)],
+                children: [for (final todo in todos) _buildTodoItem(context, todo)],
               ),
             ),
         ],
@@ -63,11 +66,11 @@ class TodoListComponent extends StatelessComponent {
     );
   }
 
-  Component _buildTodoItem(Map<String, dynamic> todo) {
+  Component _buildTodoItem(BuildContext context, Map<String, dynamic> todo) {
     final content = todo['content']?.toString() ?? '';
     final status = todo['status']?.toString() ?? 'pending';
     final icon = _getStatusIcon(status);
-    final color = _getItemColor(status);
+    final color = _getItemColor(context, status);
 
     return Row(
       children: [
@@ -97,15 +100,16 @@ class TodoListComponent extends StatelessComponent {
     }
   }
 
-  Color _getItemColor(String status) {
+  Color _getItemColor(BuildContext context, String status) {
+    final theme = VideTheme.of(context);
     switch (status) {
       case 'completed':
-        return Color(0xFF98C379); // Green
+        return theme.status.completed;
       case 'in_progress':
-        return Color(0xFFE5C07B); // Yellow/orange
+        return theme.status.inProgress;
       case 'pending':
       default:
-        return Colors.white.withOpacity(TextOpacity.secondary);
+        return theme.base.onSurface.withOpacity(TextOpacity.secondary);
     }
   }
 }

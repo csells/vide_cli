@@ -1,5 +1,6 @@
 import 'package:nocterm/nocterm.dart';
 import 'package:vide_cli/constants/text_opacity.dart';
+import 'package:vide_cli/theme/theme.dart';
 
 /// A checkbox component with focus support for nocterm TUI
 class Checkbox extends StatelessComponent {
@@ -18,6 +19,8 @@ class Checkbox extends StatelessComponent {
 
   @override
   Component build(BuildContext context) {
+    final theme = VideTheme.of(context);
+
     return Focusable(
       focused: focused,
       onKeyEvent: (event) {
@@ -34,14 +37,14 @@ class Checkbox extends StatelessComponent {
           Container(
             padding: EdgeInsets.symmetric(horizontal: 0),
             decoration: focused
-                ? BoxDecoration(border: BoxBorder.all(color: Colors.cyan))
+                ? BoxDecoration(border: BoxBorder.all(color: theme.base.primary))
                 : null,
             child: Text(
               value ? '[X]' : '[ ]',
               style: TextStyle(
                 color: focused
-                    ? Colors.cyan
-                    : Colors.white.withOpacity(TextOpacity.tertiary),
+                    ? theme.base.primary
+                    : theme.base.onSurface.withOpacity(TextOpacity.tertiary),
                 fontWeight: focused ? FontWeight.bold : FontWeight.normal,
               ),
             ),
@@ -52,8 +55,8 @@ class Checkbox extends StatelessComponent {
               label!,
               style: TextStyle(
                 color: focused
-                    ? Colors.white
-                    : Colors.white.withOpacity(TextOpacity.tertiary),
+                    ? theme.base.onSurface
+                    : theme.base.onSurface.withOpacity(TextOpacity.tertiary),
               ),
             ),
           ],

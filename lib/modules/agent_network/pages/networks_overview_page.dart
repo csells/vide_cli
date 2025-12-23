@@ -7,6 +7,8 @@ import 'package:vide_cli/modules/agent_network/pages/networks_list_page.dart';
 import 'package:vide_core/vide_core.dart';
 import 'package:vide_cli/modules/agent_network/state/agent_networks_state_notifier.dart';
 import 'package:vide_cli/components/attachment_text_field.dart';
+import 'package:vide_cli/theme/theme.dart';
+import 'package:vide_cli/constants/text_opacity.dart';
 import 'package:path/path.dart' as path;
 
 class NetworksOverviewPage extends StatefulComponent {
@@ -49,6 +51,8 @@ class _NetworksOverviewPageState extends State<NetworksOverviewPage> {
 
   @override
   Component build(BuildContext context) {
+    final theme = VideTheme.of(context);
+
     // Get current directory name
     final currentDir = Directory.current.path;
     final dirName = path.basename(currentDir);
@@ -89,7 +93,10 @@ class _NetworksOverviewPageState extends State<NetworksOverviewPage> {
                 padding: EdgeInsets.all(1),
               ),
               const SizedBox(height: 2),
-              Text('Tab: past networks & settings | Enter: start', style: TextStyle(color: Colors.grey)),
+              Text(
+                'Tab: past networks & settings | Enter: start',
+                style: TextStyle(color: theme.base.onSurface.withOpacity(TextOpacity.tertiary)),
+              ),
             ],
           ),
         ),
@@ -104,27 +111,34 @@ class _ProjectTypeBadge extends StatelessComponent {
 
   final ProjectType projectType;
 
+  // Brand colors for project types
+  static const _flutterBlue = Color(0xFF02569B);
+  static const _dartBlue = Color(0xFF0175C2);
+  static const _noctermPurple = Color(0xFF9B30FF);
+
   @override
   Component build(BuildContext context) {
+    final theme = VideTheme.of(context);
+
     String label;
     Color bgColor;
 
     switch (projectType) {
       case ProjectType.flutter:
         label = 'Flutter';
-        bgColor = Color(0xFF02569B); // Flutter blue
+        bgColor = _flutterBlue;
         break;
       case ProjectType.dart:
         label = 'Dart';
-        bgColor = Color(0xFF0175C2); // Dart blue
+        bgColor = _dartBlue;
         break;
       case ProjectType.nocterm:
         label = 'Nocterm';
-        bgColor = Color(0xFF9B30FF); // Purple
+        bgColor = _noctermPurple;
         break;
       case ProjectType.unknown:
         label = 'Unknown';
-        bgColor = Colors.grey;
+        bgColor = theme.base.outline;
         break;
     }
 
@@ -133,6 +147,7 @@ class _ProjectTypeBadge extends StatelessComponent {
       decoration: BoxDecoration(color: bgColor),
       child: Text(
         label,
+        // Use white text for contrast on colored backgrounds
         style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
       ),
     );
