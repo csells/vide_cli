@@ -11,6 +11,7 @@ export 'models/agent_id.dart';
 export 'models/agent_status.dart';
 export 'models/memory_entry.dart';
 export 'models/permission.dart';
+export 'models/vide_global_settings.dart';
 
 // Services
 export 'services/memory_service.dart';

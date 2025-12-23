@@ -7,13 +7,10 @@ class ClaudeSettings {
   final PermissionsConfig permissions;
   @JsonKey(defaultValue: null)
   final HooksConfig? hooks;
-  @JsonKey(name: 'vide_first_run_complete', defaultValue: null)
-  final bool? videFirstRunComplete;
 
   const ClaudeSettings({
     required this.permissions,
     this.hooks,
-    this.videFirstRunComplete,
   });
 
   factory ClaudeSettings.defaults() => ClaudeSettings(
@@ -27,7 +24,6 @@ class ClaudeSettings {
     return ClaudeSettings(
       permissions: settings.permissions,
       hooks: settings.hooks ?? HooksConfig.empty(),
-      videFirstRunComplete: settings.videFirstRunComplete,
     );
   }
 
@@ -36,12 +32,10 @@ class ClaudeSettings {
   ClaudeSettings copyWith({
     PermissionsConfig? permissions,
     HooksConfig? hooks,
-    bool? videFirstRunComplete,
   }) {
     return ClaudeSettings(
       permissions: permissions ?? this.permissions,
       hooks: hooks ?? this.hooks,
-      videFirstRunComplete: videFirstRunComplete ?? this.videFirstRunComplete,
     );
   }
 }

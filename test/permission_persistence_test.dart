@@ -120,7 +120,6 @@ void main() {
             }
           ]
         },
-        'vide_first_run_complete': true,
       }));
 
       final newPattern = 'Read(/new/path/**)';
@@ -141,45 +140,6 @@ void main() {
       final permissions = json['permissions'] as Map<String, dynamic>;
       final allow = permissions['allow'] as List;
       expect(allow, contains(newPattern));
-    });
-
-    test('BUG: addToAllowList does NOT preserve vide_first_run_complete', () async {
-      // NOTE: This test documents a bug in addToAllowList.
-      // The method creates a new ClaudeSettings without using copyWith,
-      // so videFirstRunComplete is dropped.
-      // See: lib/modules/settings/local_settings_manager.dart lines 246-249
-      //
-      // The fix would be to change:
-      //   final updatedSettings = ClaudeSettings(
-      //     permissions: updatedPermissions,
-      //     hooks: settings.hooks,
-      //   );
-      // To:
-      //   final updatedSettings = settings.copyWith(
-      //     permissions: updatedPermissions,
-      //   );
-
-      final claudeDir = Directory('${tempDir.path}/.claude');
-      await claudeDir.create(recursive: true);
-      final settingsFile = File('${claudeDir.path}/settings.local.json');
-      await settingsFile.writeAsString(jsonEncode({
-        'permissions': {
-          'allow': [],
-          'deny': [],
-          'ask': [],
-        },
-        'vide_first_run_complete': true,
-      }));
-
-      // Act
-      await settingsManager.addToAllowList('SomePattern');
-
-      // Assert - Currently vide_first_run_complete is LOST (this is a bug)
-      final content = await settingsFile.readAsString();
-      final json = jsonDecode(content) as Map<String, dynamic>;
-      // Bug: videFirstRunComplete is null/missing after addToAllowList
-      expect(json['vide_first_run_complete'], isNull,
-          reason: 'BUG: vide_first_run_complete is NOT preserved by addToAllowList');
     });
 
     test('Permission dialog "Allow and remember" should persist non-write operations', () async {

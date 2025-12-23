@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:nocterm/nocterm.dart';
 import 'package:path/path.dart' as path;
-import '../settings/local_settings_manager.dart';
+import 'package:vide_core/vide_core.dart';
 import 'welcome_page.dart';
 
 /// A scope that shows the welcome page on first run of Vide CLI.
@@ -26,19 +26,6 @@ class _WelcomeScopeState extends State<WelcomeScope> {
     _checkFirstRun();
   }
 
-  /// Find the Vide CLI installation root directory
-  String _getVideRoot() {
-    final scriptPath = Platform.script.toFilePath();
-    final scriptDir = path.dirname(scriptPath);
-
-    if (path.basename(scriptDir) == 'lib' ||
-        path.basename(scriptDir) == 'bin') {
-      return path.dirname(scriptDir);
-    }
-
-    return scriptDir;
-  }
-
   Future<void> _checkFirstRun() async {
     try {
       // Dev mode: VIDE_FORCE_WELCOME=1 forces welcome screen to show
@@ -51,12 +38,20 @@ class _WelcomeScopeState extends State<WelcomeScope> {
         return;
       }
 
-      final settingsManager = LocalSettingsManager(
-        projectRoot: Directory.current.path,
-        parrottRoot: _getVideRoot(),
-      );
+      // Check global first-run status
+      final homeDir =
+          Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+      if (homeDir == null) {
+        setState(() {
+          _error = 'Could not determine home directory';
+          _isChecking = false;
+        });
+        return;
+      }
 
-      final isFirstRun = await settingsManager.isFirstRun();
+      final configManager =
+          VideConfigManager(configRoot: path.join(homeDir, '.vide'));
+      final isFirstRun = configManager.isFirstRun();
 
       setState(() {
         _isFirstRun = isFirstRun;
@@ -72,12 +67,18 @@ class _WelcomeScopeState extends State<WelcomeScope> {
 
   Future<void> _onWelcomeComplete() async {
     try {
-      final settingsManager = LocalSettingsManager(
-        projectRoot: Directory.current.path,
-        parrottRoot: _getVideRoot(),
-      );
+      final homeDir =
+          Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+      if (homeDir == null) {
+        setState(() {
+          _error = 'Could not determine home directory';
+        });
+        return;
+      }
 
-      await settingsManager.markFirstRunComplete();
+      final configManager =
+          VideConfigManager(configRoot: path.join(homeDir, '.vide'));
+      configManager.markFirstRunComplete();
 
       setState(() {
         _isFirstRun = false;

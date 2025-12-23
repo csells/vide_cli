@@ -1,0 +1,33 @@
+import 'package:json_annotation/json_annotation.dart';
+
+part 'vide_global_settings.g.dart';
+
+/// Global settings for Vide CLI stored at ~/.vide/settings.json
+///
+/// These settings apply across all projects, unlike per-project settings
+/// stored in .claude/settings.local.json
+@JsonSerializable()
+class VideGlobalSettings {
+  /// Whether the first-run onboarding has been completed
+  @JsonKey(defaultValue: false)
+  final bool firstRunComplete;
+
+  const VideGlobalSettings({
+    this.firstRunComplete = false,
+  });
+
+  factory VideGlobalSettings.defaults() => const VideGlobalSettings();
+
+  factory VideGlobalSettings.fromJson(Map<String, dynamic> json) =>
+      _$VideGlobalSettingsFromJson(json);
+
+  Map<String, dynamic> toJson() => _$VideGlobalSettingsToJson(this);
+
+  VideGlobalSettings copyWith({
+    bool? firstRunComplete,
+  }) {
+    return VideGlobalSettings(
+      firstRunComplete: firstRunComplete ?? this.firstRunComplete,
+    );
+  }
+}

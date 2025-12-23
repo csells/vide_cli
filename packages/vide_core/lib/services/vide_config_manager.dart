@@ -1,6 +1,9 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'package:riverpod/riverpod.dart';
+
+import '../models/vide_global_settings.dart';
 
 /// Manages global configuration directory for Vide CLI
 ///
@@ -59,6 +62,9 @@ class VideConfigManager {
   /// Get the root config directory
   String get configRoot => _configRoot;
 
+  /// Path to the global settings file
+  String get _settingsFilePath => path.join(_configRoot, 'settings.json');
+
   /// Encode a project path following Claude Code's approach
   ///
   /// Replaces forward slashes (/) with hyphens (-)
@@ -91,6 +97,44 @@ class VideConfigManager {
         .whereType<Directory>()
         .map((dir) => path.basename(dir.path))
         .toList();
+  }
+
+  /// Read global settings (or defaults if not exists)
+  VideGlobalSettings readGlobalSettings() {
+    final file = File(_settingsFilePath);
+    if (!file.existsSync()) {
+      return VideGlobalSettings.defaults();
+    }
+
+    try {
+      final content = file.readAsStringSync();
+      final json = jsonDecode(content) as Map<String, dynamic>;
+      return VideGlobalSettings.fromJson(json);
+    } catch (e) {
+      // If file is corrupted, return defaults
+      return VideGlobalSettings.defaults();
+    }
+  }
+
+  /// Write global settings to disk
+  void writeGlobalSettings(VideGlobalSettings settings) {
+    // Ensure config directory exists
+    Directory(_configRoot).createSync(recursive: true);
+
+    final file = File(_settingsFilePath);
+    final encoder = JsonEncoder.withIndent('  ');
+    file.writeAsStringSync(encoder.convert(settings.toJson()));
+  }
+
+  /// Check if this is the first run of Vide CLI (globally)
+  bool isFirstRun() {
+    return !readGlobalSettings().firstRunComplete;
+  }
+
+  /// Mark the first run as complete (globally)
+  void markFirstRunComplete() {
+    final settings = readGlobalSettings();
+    writeGlobalSettings(settings.copyWith(firstRunComplete: true));
   }
 }
 
