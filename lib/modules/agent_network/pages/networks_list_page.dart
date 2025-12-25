@@ -6,6 +6,7 @@ import 'package:vide_cli/modules/agent_network/network_execution_page.dart';
 import 'package:vide_cli/modules/agent_network/components/network_summary_component.dart';
 import 'package:vide_cli/modules/agent_network/state/agent_networks_state_notifier.dart';
 import 'package:vide_cli/modules/memory/memories_viewer_page.dart';
+import 'package:vide_cli/modules/setup/theme_settings_page.dart';
 import 'package:vide_cli/theme/theme.dart';
 import 'package:vide_cli/constants/text_opacity.dart';
 import 'package:path/path.dart' as path;
@@ -64,12 +65,16 @@ class _NetworksListPageState extends State<NetworksListPage> {
             style: TextStyle(decoration: TextDecoration.underline, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 1),
-          // Memory row
+          // Memory and Theme row
           Focusable(
             focused: true,
             onKeyEvent: (event) {
               if (event.logicalKey == LogicalKey.keyV) {
                 MemoriesViewerPage.push(context);
+                return true;
+              }
+              if (event.logicalKey == LogicalKey.keyT) {
+                ThemeSettingsPage.push(context);
                 return true;
               }
               return false;
@@ -78,13 +83,15 @@ class _NetworksListPageState extends State<NetworksListPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 _MemoryBadge(count: totalMemories),
+                SizedBox(width: 2),
+                _ThemeBadge(),
               ],
             ),
           ),
           SizedBox(height: 1),
           // Help text
           Text(
-            'Esc: home | Backspace×2: delete | V: view memories',
+            'Esc: home | Backspace×2: delete | V: memories | T: theme',
             style: TextStyle(color: theme.base.onSurface.withOpacity(TextOpacity.tertiary)),
           ),
           SizedBox(height: 2),
@@ -220,6 +227,65 @@ class _MemoryBadge extends StatelessComponent {
           child: Text(
             count.toString(),
             style: TextStyle(color: theme.base.onSurface, fontWeight: FontWeight.bold),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Theme badge showing current theme name
+class _ThemeBadge extends StatelessComponent {
+  const _ThemeBadge();
+
+  @override
+  Component build(BuildContext context) {
+    final theme = VideTheme.of(context);
+    final themeId = context.watch(themeSettingProvider);
+
+    // Determine display name
+    String displayName;
+    if (themeId == null) {
+      displayName = 'Auto';
+    } else {
+      switch (themeId) {
+        case 'dark':
+          displayName = 'Dark';
+          break;
+        case 'light':
+          displayName = 'Light';
+          break;
+        case 'nord':
+          displayName = 'Nord';
+          break;
+        case 'dracula':
+          displayName = 'Dracula';
+          break;
+        case 'catppuccinMocha':
+          displayName = 'Catppuccin';
+          break;
+        case 'gruvboxDark':
+          displayName = 'Gruvbox';
+          break;
+        default:
+          displayName = themeId;
+      }
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 1),
+          decoration: BoxDecoration(color: theme.base.outline),
+          child: Text('Theme', style: TextStyle(color: theme.base.onSurface)),
+        ),
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 1),
+          decoration: BoxDecoration(color: theme.base.primary),
+          child: Text(
+            displayName,
+            style: TextStyle(color: theme.base.onPrimary, fontWeight: FontWeight.bold),
           ),
         ),
       ],

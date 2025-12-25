@@ -3,12 +3,13 @@ import 'dart:io';
 import 'package:claude_api/claude_api.dart';
 import 'package:nocterm/nocterm.dart';
 import 'package:vide_cli/constants/text_opacity.dart';
+import 'package:vide_cli/modules/setup/theme_selector.dart';
 import 'package:vide_cli/theme/theme.dart';
 
 /// Welcome page shown on first run of Vide CLI.
 /// Tests Claude Code availability and shows an animated introduction.
 class WelcomePage extends StatefulComponent {
-  final VoidCallback onComplete;
+  final void Function(String? themeId) onComplete;
 
   const WelcomePage({required this.onComplete, super.key});
 
@@ -16,10 +17,10 @@ class WelcomePage extends StatefulComponent {
   State<WelcomePage> createState() => _WelcomePageState();
 }
 
-enum _VerificationStep { findingClaude, testingClaude, complete, error }
+enum _VerificationStep { selectTheme, findingClaude, testingClaude, complete, completing, error }
 
 class _WelcomePageState extends State<WelcomePage> {
-  _VerificationStep _step = _VerificationStep.findingClaude;
+  _VerificationStep _step = _VerificationStep.selectTheme;
   String? _errorMessage;
   String _claudeResponse = '';
   String _displayedResponse = '';
@@ -29,6 +30,8 @@ class _WelcomePageState extends State<WelcomePage> {
   int _shimmerPosition = 0;
   bool _responseComplete = false;
   bool _claudeFound = false;
+  TuiThemeData? _previewTheme;
+  String? _selectedThemeId;
 
   // Width for text wrapping (container width minus padding)
   static const int _textWidth = 52;
@@ -47,7 +50,7 @@ class _WelcomePageState extends State<WelcomePage> {
   @override
   void initState() {
     super.initState();
-    _startVerification();
+    // Start with theme selection, verification happens after
   }
 
   @override
@@ -151,6 +154,7 @@ class _WelcomePageState extends State<WelcomePage> {
       _shimmerPosition = 0;
       _responseComplete = false;
       _claudeFound = false;
+      // Keep the selected theme - user already chose it
     });
     _startVerification();
   }
@@ -189,8 +193,88 @@ class _WelcomePageState extends State<WelcomePage> {
 
   @override
   Component build(BuildContext context) {
+    // Wrap in TuiTheme if we have a preview theme
+    Component content = _buildMainContent(context);
+    if (_previewTheme != null) {
+      content = TuiTheme(
+        data: _previewTheme!,
+        child: VideTheme(
+          data: VideThemeData.fromBrightness(_previewTheme!),
+          child: content,
+        ),
+      );
+    }
+    return content;
+  }
+
+  Component _buildMainContent(BuildContext context) {
     final theme = VideTheme.of(context);
 
+    // Show theme selector when in selectTheme step
+    if (_step == _VerificationStep.selectTheme) {
+      return _buildThemeSelectionView(context, theme);
+    }
+
+    // Show loading state while completing
+    if (_step == _VerificationStep.completing) {
+      return Center(
+        child: Text(
+          'Starting Vide...',
+          style: TextStyle(color: theme.base.outline),
+        ),
+      );
+    }
+
+    return _buildVerificationView(context, theme);
+  }
+
+  Component _buildThemeSelectionView(BuildContext context, VideThemeData theme) {
+    return Center(
+      child: Container(
+        width: _boxWidth,
+        decoration: BoxDecoration(
+          border: BoxBorder.all(color: theme.base.outline),
+        ),
+        padding: EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ASCII Logo
+            ..._buildLogo(theme),
+            SizedBox(height: 1),
+
+            // Tagline
+            Text(
+              'Your AI-powered terminal IDE',
+              style: TextStyle(
+                color: theme.base.onSurface.withOpacity(TextOpacity.secondary),
+              ),
+            ),
+            SizedBox(height: 2),
+
+            // Theme selector
+            ThemeSelector(
+              onThemeSelected: (themeId) {
+                // Save theme selection and proceed to verification
+                setState(() {
+                  _selectedThemeId = themeId;
+                  _step = _VerificationStep.findingClaude;
+                });
+                _startVerification();
+              },
+              onPreviewTheme: (previewTheme) {
+                setState(() {
+                  _previewTheme = previewTheme;
+                });
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Component _buildVerificationView(BuildContext context, VideThemeData theme) {
     return KeyboardListener(
       autofocus: true,
       onKeyEvent: (key) {
@@ -198,8 +282,11 @@ class _WelcomePageState extends State<WelcomePage> {
           _retry();
           return true;
         }
-        if (_responseComplete && key == LogicalKey.enter) {
-          component.onComplete();
+        if (_responseComplete && _step == _VerificationStep.complete && key == LogicalKey.enter) {
+          setState(() {
+            _step = _VerificationStep.completing;
+          });
+          component.onComplete(_selectedThemeId);
           return true;
         }
         return false;

@@ -36,5 +36,6 @@ library;
 export 'colors/diff_colors.dart';
 export 'colors/status_colors.dart';
 export 'colors/syntax_colors.dart';
+export 'theme_provider.dart';
 export 'vide_theme.dart';
 export 'vide_theme_data.dart';

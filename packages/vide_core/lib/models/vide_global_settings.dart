@@ -12,8 +12,14 @@ class VideGlobalSettings {
   @JsonKey(defaultValue: false)
   final bool firstRunComplete;
 
+  /// The selected theme name. Null means auto-detect based on terminal.
+  /// Valid values: 'dark', 'light', 'nord', 'dracula', 'catppuccinMocha', 'gruvboxDark'
+  @JsonKey(includeIfNull: false)
+  final String? theme;
+
   const VideGlobalSettings({
     this.firstRunComplete = false,
+    this.theme,
   });
 
   factory VideGlobalSettings.defaults() => const VideGlobalSettings();
@@ -25,9 +31,11 @@ class VideGlobalSettings {
 
   VideGlobalSettings copyWith({
     bool? firstRunComplete,
+    String? Function()? theme,
   }) {
     return VideGlobalSettings(
       firstRunComplete: firstRunComplete ?? this.firstRunComplete,
+      theme: theme != null ? theme() : this.theme,
     );
   }
 }

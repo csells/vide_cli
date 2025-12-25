@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:nocterm/nocterm.dart';
+import 'package:nocterm_riverpod/nocterm_riverpod.dart';
 import 'package:path/path.dart' as path;
+import 'package:vide_cli/theme/theme.dart';
 import 'package:vide_core/vide_core.dart';
 import 'welcome_page.dart';
 
@@ -65,7 +67,7 @@ class _WelcomeScopeState extends State<WelcomeScope> {
     }
   }
 
-  Future<void> _onWelcomeComplete() async {
+  Future<void> _onWelcomeComplete(String? themeId) async {
     try {
       final homeDir =
           Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
@@ -79,10 +81,17 @@ class _WelcomeScopeState extends State<WelcomeScope> {
       final configManager =
           VideConfigManager(configRoot: path.join(homeDir, '.vide'));
       configManager.markFirstRunComplete();
+      configManager.setTheme(themeId);
 
+      // IMPORTANT: Set _isFirstRun = false BEFORE updating theme provider
+      // to prevent WelcomePage from being recreated with fresh state
+      // when the provider triggers a rebuild
       setState(() {
         _isFirstRun = false;
       });
+
+      // Update the theme provider so the app uses the new theme
+      context.read(themeSettingProvider.notifier).state = themeId;
     } catch (e) {
       setState(() {
         _error = 'Failed to save settings: $e';

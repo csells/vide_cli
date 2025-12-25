@@ -18,6 +18,10 @@ compile:
 generate-devtools:
     dart run packages/flutter_runtime_mcp/tool/generate_bundled_devtools.dart
 
+# Run vide as if it's the first time (shows onboarding)
+test-onboarding:
+    VIDE_FORCE_WELCOME=1 dart run bin/vide.dart
+
 # Create a new release (interactive)
 release:
     #!/usr/bin/env bash

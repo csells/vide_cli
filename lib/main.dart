@@ -60,17 +60,29 @@ class VideApp extends StatelessComponent {
 
   @override
   Component build(BuildContext context) {
+    // Get explicit theme if set, otherwise null for auto-detect
+    final explicitTheme = context.watch(explicitThemeProvider);
+
     return NoctermApp(
       title: context.watch(consoleTitleProvider),
-      // NoctermApp auto-detects terminal brightness and provides TuiTheme
-      // VideTheme.auto() reads from TuiTheme to select light/dark vide colors
-      child: VideTheme.auto(
-        child: Padding(
-          padding: EdgeInsets.all(1),
-          child: WelcomeScope(
-            child: SetupScope(child: Navigator(home: NetworksOverviewPage())),
-          ),
-        ),
+      // Pass explicit theme if set, otherwise NoctermApp auto-detects
+      theme: explicitTheme,
+      child: explicitTheme != null
+          // If we have an explicit theme, wrap with matching VideTheme
+          ? VideTheme(
+              data: VideThemeData.fromBrightness(explicitTheme),
+              child: _buildContent(),
+            )
+          // Otherwise, use auto-detection
+          : VideTheme.auto(child: _buildContent()),
+    );
+  }
+
+  Component _buildContent() {
+    return Padding(
+      padding: EdgeInsets.all(1),
+      child: WelcomeScope(
+        child: SetupScope(child: Navigator(home: NetworksOverviewPage())),
       ),
     );
   }

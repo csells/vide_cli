@@ -136,6 +136,19 @@ class VideConfigManager {
     final settings = readGlobalSettings();
     writeGlobalSettings(settings.copyWith(firstRunComplete: true));
   }
+
+  /// Get the currently selected theme name.
+  /// Returns null if auto-detect is enabled.
+  String? getTheme() {
+    return readGlobalSettings().theme;
+  }
+
+  /// Set the theme preference.
+  /// Pass null to enable auto-detection based on terminal brightness.
+  void setTheme(String? themeName) {
+    final settings = readGlobalSettings();
+    writeGlobalSettings(settings.copyWith(theme: () => themeName));
+  }
 }
 
 /// Riverpod provider for VideConfigManager
