@@ -57,7 +57,7 @@ class ClaudeClientFactoryImpl implements ClaudeClientFactory {
     final callbackFactory = _ref.read(canUseToolCallbackFactoryProvider);
     final canUseTool = callbackFactory?.call(cwd);
 
-    return ClaudeClient.createAndInitInBackground(
+    return ClaudeClient.createNonBlocking(
       config: claudeConfig,
       mcpServers: mcpServers,
       canUseTool: canUseTool,

@@ -33,8 +33,8 @@ abstract class ClaudeClient {
 
   T? getMcpServer<T extends McpServerBase>(String name);
 
-  factory ClaudeClient({ClaudeConfig? config, List<McpServerBase>? mcpServers}) = ClaudeClientImpl;
-
+  /// Creates and fully initializes a client.
+  /// Awaits initialization before returning.
   static Future<ClaudeClient> create({
     ClaudeConfig? config,
     List<McpServerBase>? mcpServers,
@@ -51,10 +51,10 @@ abstract class ClaudeClient {
     return client;
   }
 
-  /// Create a client and initialize in background.
-  /// Returns immediately - the client will be in "connecting" state until init completes.
-  /// Messages sent before init completes will be queued.
-  static ClaudeClient createAndInitInBackground({
+  /// Creates a client that initializes in the background.
+  /// Returns immediately - the client will be usable but messages sent before
+  /// init completes will be queued and sent once initialization finishes.
+  static ClaudeClient createNonBlocking({
     ClaudeConfig? config,
     List<McpServerBase>? mcpServers,
     Map<HookEvent, List<HookMatcher>>? hooks,

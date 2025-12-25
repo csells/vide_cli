@@ -450,9 +450,9 @@ void main() {
     });
   });
 
-  group('ClaudeClient factory', () {
+  group('ClaudeClientImpl constructor', () {
     test('creates ClaudeClientImpl instance', () {
-      final client = ClaudeClient();
+      final client = ClaudeClientImpl();
 
       expect(client, isA<ClaudeClientImpl>());
     });
@@ -460,14 +460,14 @@ void main() {
     test('passes config to implementation', () {
       const sessionId = 'factory-session-id';
       final config = ClaudeConfig(sessionId: sessionId);
-      final client = ClaudeClient(config: config);
+      final client = ClaudeClientImpl(config: config);
 
       expect(client.sessionId, equals(sessionId));
     });
 
     test('passes MCP servers to implementation', () {
       final servers = [TestMcpServer(name: 'factory-server')];
-      final client = ClaudeClient(mcpServers: servers);
+      final client = ClaudeClientImpl(mcpServers: servers);
 
       expect(client.getMcpServer<TestMcpServer>('factory-server'), isNotNull);
     });

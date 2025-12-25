@@ -7,7 +7,7 @@ void main() {
     test('client accepts MCP servers in constructor', () {
       final server = TestMcpServer(name: 'integration-test-server');
 
-      final client = ClaudeClient(
+      final client = ClaudeClientImpl(
         config: ClaudeConfig.defaults(),
         mcpServers: [server],
       );
@@ -18,7 +18,7 @@ void main() {
     test('client provides servers via getMcpServer with type', () async {
       final testServer = TestMcpServer(name: 'test-server');
 
-      final client = ClaudeClient(
+      final client = ClaudeClientImpl(
         config: ClaudeConfig.defaults(),
         mcpServers: [testServer],
       );
@@ -32,7 +32,7 @@ void main() {
     test('getMcpServer returns null for non-existent server', () {
       final testServer = TestMcpServer(name: 'existing-server');
 
-      final client = ClaudeClient(
+      final client = ClaudeClientImpl(
         config: ClaudeConfig.defaults(),
         mcpServers: [testServer],
       );
@@ -45,7 +45,7 @@ void main() {
     test('getMcpServer returns null for wrong type', () {
       final testServer = TestMcpServer(name: 'test-server');
 
-      final client = ClaudeClient(
+      final client = ClaudeClientImpl(
         config: ClaudeConfig.defaults(),
         mcpServers: [testServer],
       );
@@ -60,7 +60,7 @@ void main() {
       final server2 = TestMcpServer(name: 'server-two', tools: ['tool2']);
       final server3 = SpyMcpServer(name: 'spy-server');
 
-      final client = ClaudeClient(
+      final client = ClaudeClientImpl(
         config: ClaudeConfig.defaults(),
         mcpServers: [server1, server2, server3],
       );
@@ -85,7 +85,7 @@ void main() {
     });
 
     test('client with empty MCP servers list is valid', () {
-      final client = ClaudeClient(
+      final client = ClaudeClientImpl(
         config: ClaudeConfig.defaults(),
         mcpServers: [],
       );
@@ -96,7 +96,7 @@ void main() {
     });
 
     test('client without explicit MCP servers defaults to empty list', () {
-      final client = ClaudeClient(
+      final client = ClaudeClientImpl(
         config: ClaudeConfig.defaults(),
       );
 
