@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:nocterm/nocterm.dart';
 import 'package:nocterm_riverpod/nocterm_riverpod.dart';
 import 'package:flutter_runtime_mcp/flutter_runtime_mcp.dart';
-import 'package:claude_api/claude_api.dart';
+import 'package:claude_sdk/claude_sdk.dart';
 import 'package:vide_core/vide_core.dart';
 import 'package:vide_cli/constants/text_opacity.dart';
 import 'default_renderer.dart';

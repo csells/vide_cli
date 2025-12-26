@@ -10,7 +10,7 @@ environment:
   sdk: ^3.9.0
 
 workspace:
-  - packages/claude_api
+  - packages/claude_sdk
   - packages/flutter_runtime_mcp
   - packages/moondream_api
   - packages/vide_core
@@ -25,7 +25,7 @@ dependencies:
       url: https://github.com/Norbert515/nocterm.git
       ref: 07ed83d9cccb0bb40e70058dc94dbbb2bfd05ac6
       path: packages/nocterm_riverpod
-  claude_api: any
+  claude_sdk: any
   flutter_runtime_mcp: any
   vide_core: any
   riverpod: ^2.5.1

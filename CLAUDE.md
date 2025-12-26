@@ -267,7 +267,7 @@ See `.github/workflows/` for build pipeline configuration.
 
 - `nocterm` - Terminal UI framework (custom git dependency)
 - `riverpod` - State management
-- `claude_api` - Claude Code API integration (local package)
+- `claude_sdk` - Claude Code API integration (local package)
 - `flutter_runtime_mcp` - Flutter runtime management (local package)
 - `freezed` / `json_serializable` - Code generation
 - `sentry` - Error tracking
@@ -275,7 +275,7 @@ See `.github/workflows/` for build pipeline configuration.
 
 ### Local Packages
 
-- `packages/claude_api/` - Claude API client
+- `packages/claude_sdk/` - Claude SDK client
 - `packages/flutter_runtime_mcp/` - Flutter runtime MCP server
 - `packages/runtime_ai_dev_tools/` - Flutter service extensions
 - `packages/moondream_api/` - Moondream vision AI client

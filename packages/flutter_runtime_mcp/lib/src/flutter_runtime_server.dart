@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:mcp_dart/mcp_dart.dart';
-import 'package:claude_api/claude_api.dart';
+import 'package:claude_sdk/claude_sdk.dart';
 import 'package:moondream_api/moondream_api.dart';
 import 'package:sentry/sentry.dart';
 import 'package:uuid/uuid.dart';

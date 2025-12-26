@@ -1,4 +1,4 @@
-import 'package:claude_api/claude_api.dart';
+import 'package:claude_sdk/claude_sdk.dart';
 import '../models/agent_id.dart';
 import '../agents/agent_configuration.dart';
 import 'package:riverpod/riverpod.dart';

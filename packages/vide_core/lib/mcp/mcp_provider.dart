@@ -1,4 +1,4 @@
-import 'package:claude_api/claude_api.dart';
+import 'package:claude_sdk/claude_sdk.dart';
 import 'package:flutter_runtime_mcp/flutter_runtime_mcp.dart';
 import 'agent/agent_mcp_server.dart';
 import 'git/git_server.dart';

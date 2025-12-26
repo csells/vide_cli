@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:mcp_dart/mcp_dart.dart';
-import 'package:claude_api/claude_api.dart';
+import 'package:claude_sdk/claude_sdk.dart';
 import 'package:path/path.dart' as path;
 import 'package:sentry/sentry.dart';
 import '../../../models/agent_id.dart';

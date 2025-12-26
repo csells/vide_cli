@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:nocterm/nocterm.dart';
 import 'package:nocterm_riverpod/nocterm_riverpod.dart';
-import 'package:claude_api/claude_api.dart';
+import 'package:claude_sdk/claude_sdk.dart';
 import 'package:vide_cli/components/attachment_text_field.dart';
 import 'package:vide_cli/components/enhanced_loading_indicator.dart';
 import 'package:vide_cli/components/permission_dialog.dart';

@@ -3,7 +3,7 @@
 ## Project Structure & Module Organization
 - `bin/` contains CLI entrypoints (`vide.dart` is the main executable, `demo.dart` for demos).
 - `lib/` holds the core application code, organized by `components/`, `modules/`, `services/`, and `utils/`.
-- `packages/` contains internal packages (`claude_api`, `flutter_runtime_mcp`, `runtime_ai_dev_tools`, `moondream_api`).
+- `packages/` contains internal packages (`claude_sdk`, `flutter_runtime_mcp`, `runtime_ai_dev_tools`, `moondream_api`).
 - `test/` includes unit and integration tests, generally mirroring module locations under `lib/`.
 - `docs/` stores assets used in the README (logo, hero image).
 - `scripts/` contains install scripts for macOS/Linux/Windows.

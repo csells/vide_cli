@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:claude_api/claude_api.dart';
+import 'package:claude_sdk/claude_sdk.dart';
 import 'package:path/path.dart' as path;
 import 'package:riverpod/riverpod.dart';
 import '../../permissions/permission_scope.dart';

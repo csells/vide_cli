@@ -19,7 +19,7 @@ Key capabilities include:
     *   **Architecture:** Model Context Protocol (MCP) servers used for modular tool exposure.
 *   **Internal Packages:**
     *   `packages/flutter_runtime_mcp`: The core engine for controlling Flutter apps.
-    *   `packages/claude_api`: Wrapper for Claude Code API.
+    *   `packages/claude_sdk`: Wrapper for Claude Code API.
     *   `packages/runtime_ai_dev_tools`: The code injected into the target Flutter app.
 
 ## Build and Run

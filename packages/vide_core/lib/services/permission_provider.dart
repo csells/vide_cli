@@ -1,4 +1,4 @@
-import 'package:claude_api/claude_api.dart';
+import 'package:claude_sdk/claude_sdk.dart';
 import 'package:riverpod/riverpod.dart';
 
 /// Factory function type for creating canUseTool callbacks.

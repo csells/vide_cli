@@ -50,7 +50,7 @@ vide_cli/ (repo root)
 │   ├── vide_core/         # NEW: Shared business logic (models, services)
 │   ├── vide_server/       # NEW: REST API server
 │   ├── flutter_runtime_mcp/ # EXISTING: stays here
-│   ├── claude_api/        # EXISTING: stays here
+│   ├── claude_sdk/        # EXISTING: stays here
 │   └── moondream_api/     # EXISTING: stays here
 ```
 
@@ -84,8 +84,8 @@ This prevents any conflicts between CLI and web users working on the same projec
 **Dependencies** (replace `nocterm_riverpod` imports with `riverpod` when moving files to vide_core):
 ```yaml
 dependencies:
-  claude_api:
-    path: ../claude_api
+  claude_sdk:
+    path: ../claude_sdk
   flutter_runtime_mcp:
     path: ../flutter_runtime_mcp
   riverpod: ^3.0.3
@@ -805,7 +805,7 @@ void main(List<String> args) async {
 - ✅ Analyzed AgentNetworkManager (has built-in message queue, persistence via JSON, resume() flow)
 
 **Implementation Steps** (Use `git mv` for ALL file moves!):
-1. ✅ Create `packages/vide_core/` with pubspec.yaml (dependencies: claude_api via path, riverpod ^2.5.1, freezed, json_serializable, etc.)
+1. ✅ Create `packages/vide_core/` with pubspec.yaml (dependencies: claude_sdk via path, riverpod ^2.5.1, freezed, json_serializable, etc.)
 2. ✅ **git mv** models to vide_core - AS-IS
 3. ✅ **git mv** VideConfigManager to vide_core - convert singleton to Riverpod provider (add configRoot param)
 4. ✅ **git mv** PostHogService to vide_core - update init method to accept VideConfigManager directly

@@ -1,5 +1,5 @@
 import 'package:nocterm/nocterm.dart';
-import 'package:claude_api/claude_api.dart';
+import 'package:claude_sdk/claude_sdk.dart';
 import 'package:vide_core/vide_core.dart';
 import 'flutter_output_renderer.dart';
 import 'terminal_output_renderer.dart';

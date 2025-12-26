@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:claude_api/claude_api.dart';
+import 'package:claude_sdk/claude_sdk.dart';
 
 /// A mock ClaudeClient for testing that doesn't spawn real processes.
 class MockClaudeClient implements ClaudeClient {

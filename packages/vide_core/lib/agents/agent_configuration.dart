@@ -1,4 +1,4 @@
-import 'package:claude_api/claude_api.dart';
+import 'package:claude_sdk/claude_sdk.dart';
 import '../mcp/mcp_server_type.dart';
 
 /// High-level configuration for an agent.

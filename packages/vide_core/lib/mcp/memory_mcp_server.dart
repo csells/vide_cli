@@ -1,5 +1,5 @@
 import 'package:mcp_dart/mcp_dart.dart';
-import 'package:claude_api/claude_api.dart';
+import 'package:claude_sdk/claude_sdk.dart';
 import 'package:sentry/sentry.dart';
 import '../services/memory_service.dart';
 import '../utils/working_dir_provider.dart';
