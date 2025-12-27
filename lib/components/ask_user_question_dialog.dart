@@ -94,6 +94,10 @@ class _AskUserQuestionDialogState extends State<AskUserQuestionDialog> {
     setState(() {
       _isTypingCustom = false;
       _textController.clear();
+      // Move selection back to last regular option so user doesn't immediately re-enter typing mode
+      if (_currentQuestion.options.isNotEmpty) {
+        _selectedOptionIndex = _currentQuestion.options.length - 1;
+      }
     });
   }
 
@@ -159,11 +163,15 @@ class _AskUserQuestionDialogState extends State<AskUserQuestionDialog> {
             setState(() {
               _selectedOptionIndex = (_selectedOptionIndex - 1) % _totalOptions;
               if (_selectedOptionIndex < 0) _selectedOptionIndex = _totalOptions - 1;
+              // Auto-activate text input when navigating to "Type something"
+              if (_isTypeSomethingSelected) _isTypingCustom = true;
             });
             return true;
           } else if (key == LogicalKey.arrowDown) {
             setState(() {
               _selectedOptionIndex = (_selectedOptionIndex + 1) % _totalOptions;
+              // Auto-activate text input when navigating to "Type something"
+              if (_isTypeSomethingSelected) _isTypingCustom = true;
             });
             return true;
           } else if (key == LogicalKey.arrowLeft && totalQuestions > 1) {
