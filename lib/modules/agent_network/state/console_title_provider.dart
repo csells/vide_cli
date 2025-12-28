@@ -102,10 +102,11 @@ _AggregatedStatus _getAggregatedStatus(Ref ref) {
   final networkState = ref.watch(agentNetworkManagerProvider);
   final agentIds = networkState.agentIds;
   final permissionState = ref.watch(permissionStateProvider);
+  final askUserQuestionState = ref.watch(askUserQuestionStateProvider);
   final claudeClients = ref.watch(claudeManagerProvider);
 
-  // Check if there's a pending permission request
-  if (permissionState.current != null) {
+  // Check if there's a pending permission request or askUserQuestion
+  if (permissionState.current != null || askUserQuestionState.current != null) {
     return _AggregatedStatus.needsAttention;
   }
 

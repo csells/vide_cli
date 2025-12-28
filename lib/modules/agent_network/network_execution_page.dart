@@ -449,7 +449,10 @@ class _AgentChatState extends State<_AgentChat> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 // Show typing indicator with hint when processing
-                if (_conversation.isProcessing)
+                // But NOT when waiting for user input (askUserQuestion or permission dialog)
+                if (_conversation.isProcessing &&
+                    currentAskUserQuestionRequest == null &&
+                    currentPermissionRequest == null)
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
@@ -521,6 +524,7 @@ class _AgentChatState extends State<_AgentChat> {
                     onSubmit: _sendMessage,
                     onCommand: _handleCommand,
                     commandSuggestions: _getCommandSuggestions,
+                    onEscape: () => component.client.abort(),
                   ),
 
                 // Command result feedback

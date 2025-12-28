@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:mcp_dart/mcp_dart.dart';
 import 'package:claude_sdk/claude_sdk.dart';
 import 'package:sentry/sentry.dart';
@@ -137,15 +139,14 @@ For open-ended questions, just ask in regular text instead.''',
           // Ask the user via the service (blocks until UI responds)
           final answers = await _service.askQuestions(questions);
 
-          // Format response
-          final responseText = StringBuffer();
-          responseText.writeln('User responses:');
+          // Return JSON response for easy parsing by UI renderer
+          final jsonResponse = <String, dynamic>{};
           for (final entry in answers.entries) {
-            responseText.writeln('- ${entry.key}: ${entry.value}');
+            jsonResponse[entry.key] = entry.value;
           }
 
           return CallToolResult.fromContent(
-            content: [TextContent(text: responseText.toString())],
+            content: [TextContent(text: jsonEncode(jsonResponse))],
           );
         } catch (e, stackTrace) {
           await Sentry.configureScope((scope) {
