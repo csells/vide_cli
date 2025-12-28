@@ -317,4 +317,25 @@ class MockClaudeClient implements ClaudeClient {
 
   @override
   String get workingDirectory => config.workingDirectory!;
+
+  @override
+  void injectToolResult(ToolResultResponse toolResult) {
+    // Find the last assistant message and add the tool result to it
+    if (_currentConversation.messages.isEmpty) return;
+
+    final lastIndex = _currentConversation.messages.length - 1;
+    final lastMessage = _currentConversation.messages[lastIndex];
+
+    if (lastMessage.role != MessageRole.assistant) return;
+
+    // Add the tool result to the responses
+    final updatedMessage = lastMessage.copyWith(
+      responses: [...lastMessage.responses, toolResult],
+    );
+
+    final updatedMessages = [..._currentConversation.messages];
+    updatedMessages[lastIndex] = updatedMessage;
+
+    _updateConversation(_currentConversation.copyWith(messages: updatedMessages));
+  }
 }

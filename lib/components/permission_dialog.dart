@@ -6,9 +6,10 @@ class PermissionDialog extends StatefulComponent {
   final String displayAction;
   final String? agentName;
   final String? inferredPattern;
-  /// Callback with (granted, remember, patternOverride)
+  /// Callback with (granted, remember, patternOverride, denyReason)
   /// patternOverride is non-null when user selects a different pattern than the inferred one
-  final Function(bool granted, bool remember, {String? patternOverride}) onResponse;
+  /// denyReason is non-null when user denies with a custom reason
+  final Function(bool granted, bool remember, {String? patternOverride, String? denyReason}) onResponse;
 
   const PermissionDialog({
     required this.toolName,
@@ -22,7 +23,7 @@ class PermissionDialog extends StatefulComponent {
   /// Create from permission request
   factory PermissionDialog.fromRequest({
     required PermissionRequest request,
-    required Function(bool granted, bool remember, {String? patternOverride}) onResponse,
+    required Function(bool granted, bool remember, {String? patternOverride, String? denyReason}) onResponse,
     Key? key,
   }) {
     return PermissionDialog(
@@ -41,6 +42,18 @@ class PermissionDialog extends StatefulComponent {
 class _PermissionDialogState extends State<PermissionDialog> {
   bool _hasResponded = false;
   int _selectedIndex = 0;
+
+  /// Controller for custom deny reason text input
+  final _textController = TextEditingController();
+
+  /// Whether the deny option is selected (last option in the list)
+  bool get _isDenySelected => _selectedIndex == _options.length - 1;
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
+  }
 
   List<_PermissionOption> get _options {
     final options = <_PermissionOption>[
@@ -65,7 +78,15 @@ class _PermissionDialogState extends State<PermissionDialog> {
   void _handleResponse(_PermissionOption option) {
     if (_hasResponded) return;
     _hasResponded = true;
-    component.onResponse(option.granted, option.remember, patternOverride: option.patternOverride);
+
+    // If denying with custom reason, pass it along
+    String? denyReason;
+    if (!option.granted && _textController.text.isNotEmpty) {
+      denyReason = _textController.text;
+    }
+
+    component.onResponse(option.granted, option.remember,
+        patternOverride: option.patternOverride, denyReason: denyReason);
   }
 
   @override
@@ -78,6 +99,25 @@ class _PermissionDialogState extends State<PermissionDialog> {
       ),
       child: KeyboardListener(
         onKeyEvent: (key) {
+          // When deny is selected and text field is active, handle differently
+          if (_isDenySelected) {
+            if (key == LogicalKey.arrowUp) {
+              // Navigate away from deny option
+              setState(() {
+                _selectedIndex = _selectedIndex - 1;
+                if (_selectedIndex < 0) _selectedIndex = _options.length - 1;
+              });
+              return true;
+            } else if (key == LogicalKey.escape) {
+              // ESC denies without reason (abort behavior)
+              _handleResponse(_options.last);
+              return true;
+            }
+            // Let TextField handle other keys (including enter)
+            return false;
+          }
+
+          // Normal navigation mode
           if (key == LogicalKey.arrowUp) {
             setState(() {
               _selectedIndex = (_selectedIndex - 1) % _options.length;
@@ -93,7 +133,7 @@ class _PermissionDialogState extends State<PermissionDialog> {
             _handleResponse(_options[_selectedIndex]);
             return true;
           } else if (key == LogicalKey.escape) {
-            _handleResponse(_options[2]); // Deny
+            _handleResponse(_options.last); // Deny
             return true;
           }
           return false;
@@ -140,6 +180,7 @@ class _PermissionDialogState extends State<PermissionDialog> {
   Component _buildListItem(int index, _PermissionOption option) {
     final isSelected = index == _selectedIndex;
     final color = option.granted ? Colors.green : Colors.red;
+    final isDenyOption = !option.granted;
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 1),
@@ -156,6 +197,18 @@ class _PermissionDialogState extends State<PermissionDialog> {
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             ),
           ),
+          // Show inline text field when deny is selected
+          if (isDenyOption && isSelected) ...[
+            Text(': ', style: TextStyle(color: Colors.grey)),
+            Expanded(
+              child: TextField(
+                controller: _textController,
+                focused: true,
+                placeholder: 'Reason (optional)',
+                onSubmitted: (_) => _handleResponse(option),
+              ),
+            ),
+          ],
         ],
       ),
     );

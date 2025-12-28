@@ -27,6 +27,10 @@ abstract class ClaudeClient {
 
   String get workingDirectory;
 
+  /// Injects a synthetic tool result into the conversation.
+  /// Used to mark a pending tool invocation as failed (e.g., when permission is denied).
+  void injectToolResult(ToolResultResponse toolResult);
+
   /// Emits when a conversation turn completes (assistant finishes responding).
   /// This is the clean way to detect when an agent has finished its work.
   Stream<void> get onTurnComplete;
@@ -232,18 +236,42 @@ class ClaudeClientImpl implements ClaudeClient {
   }
 
   @override
+  void injectToolResult(ToolResultResponse toolResult) {
+    // Find the last assistant message and add the tool result to it
+    if (_currentConversation.messages.isEmpty) return;
+
+    final lastIndex = _currentConversation.messages.length - 1;
+    final lastMessage = _currentConversation.messages[lastIndex];
+
+    if (lastMessage.role != MessageRole.assistant) return;
+
+    // Add the tool result to the responses
+    final updatedMessage = lastMessage.copyWith(
+      responses: [...lastMessage.responses, toolResult],
+    );
+
+    final updatedMessages = [..._currentConversation.messages];
+    updatedMessages[lastIndex] = updatedMessage;
+
+    _updateConversation(_currentConversation.copyWith(messages: updatedMessages));
+  }
+
+  @override
   void sendMessage(Message message) {
     if (message.text.trim().isEmpty) {
       return;
     }
 
-    // If not initialized, queue the message and update UI optimistically
+    // If not initialized or protocol was aborted, queue the message and restart
     final controlProtocol = _lifecycleManager.controlProtocol;
     if (controlProtocol == null) {
       _pendingMessages.add(message);
       // Update conversation optimistically so UI shows the message
       final userMessage = ConversationMessage.user(content: message.text, attachments: message.attachments);
       _updateConversation(_currentConversation.addMessage(userMessage).withState(ConversationState.sendingMessage));
+
+      // Restart the control protocol since it was aborted or not yet initialized
+      _startControlProtocol();
       return;
     }
 

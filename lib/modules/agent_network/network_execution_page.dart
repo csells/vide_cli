@@ -287,7 +287,7 @@ class _AgentChatState extends State<_AgentChat> {
     return null;
   }
 
-  void _handlePermissionResponse(PermissionRequest request, bool granted, bool remember, {String? patternOverride}) async {
+  void _handlePermissionResponse(PermissionRequest request, bool granted, bool remember, {String? patternOverride, String? denyReason}) async {
     final permissionService = context.read(permissionServiceProvider);
 
     // If remember and granted, decide where to store based on tool type
@@ -314,21 +314,24 @@ class _AgentChatState extends State<_AgentChat> {
       }
     }
 
+    // Determine the reason for the response
+    String reason;
+    if (granted) {
+      reason = 'User approved';
+    } else if (denyReason != null && denyReason.isNotEmpty) {
+      reason = denyReason;
+    } else {
+      reason = 'User denied';
+    }
+
     permissionService.respondToPermission(
       request.requestId,
       PermissionResponse(
         decision: granted ? 'allow' : 'deny',
-        reason: granted ? 'User approved' : 'User denied',
+        reason: reason,
         remember: remember,
       ),
     );
-
-    // If denied, abort the process
-    if (!granted) {
-      print('[AgentChat] Tool denied by user, aborting process');
-      // Abort the client - this will stop the Claude process
-      await component.client.abort();
-    }
 
     // Dequeue the current request to show the next one
     context.read(permissionStateProvider.notifier).dequeueRequest();
@@ -511,8 +514,8 @@ class _AgentChatState extends State<_AgentChat> {
                         ),
                       PermissionDialog.fromRequest(
                         request: currentPermissionRequest,
-                        onResponse: (granted, remember, {String? patternOverride}) =>
-                            _handlePermissionResponse(currentPermissionRequest, granted, remember, patternOverride: patternOverride),
+                        onResponse: (granted, remember, {String? patternOverride, String? denyReason}) =>
+                            _handlePermissionResponse(currentPermissionRequest, granted, remember, patternOverride: patternOverride, denyReason: denyReason),
                         key: Key('permission_${currentPermissionRequest.requestId}'),
                       ),
                     ],
