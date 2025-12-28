@@ -2,7 +2,6 @@ import 'package:nocterm/nocterm.dart';
 import 'package:nocterm/src/components/rich_text.dart';
 import 'package:vide_cli/constants/text_opacity.dart';
 import 'package:vide_cli/theme/theme.dart';
-import 'package:vide_cli/utils/syntax_highlighter.dart';
 
 enum DiffLineType { added, removed, unchanged, header }
 
@@ -11,12 +10,15 @@ class DiffLine {
   final DiffLineType type;
   final String content;
   final String? language;
+  /// Pre-computed highlighted content. If null, highlighting will be computed during build.
+  final TextSpan? highlightedContent;
 
   const DiffLine({
     this.lineNumber,
     required this.type,
     required this.content,
     this.language,
+    this.highlightedContent,
   });
 }
 
@@ -72,7 +74,7 @@ class CodeDiff extends StatelessComponent {
           prefixColor: theme.diff.addedPrefix,
           contentColor: theme.base.onSurface,
           backgroundColor: theme.diff.addedBackground,
-          language: line.language,
+          highlightedContent: line.highlightedContent,
         );
 
       case DiffLineType.removed:
@@ -85,7 +87,7 @@ class CodeDiff extends StatelessComponent {
           prefixColor: theme.diff.removedPrefix,
           contentColor: theme.base.onSurface,
           backgroundColor: theme.diff.removedBackground,
-          language: line.language,
+          highlightedContent: line.highlightedContent,
         );
 
       case DiffLineType.unchanged:
@@ -97,7 +99,7 @@ class CodeDiff extends StatelessComponent {
           content: line.content,
           prefixColor: theme.diff.contextPrefix,
           contentColor: theme.base.onSurface,
-          language: line.language,
+          highlightedContent: line.highlightedContent,
         );
     }
   }
@@ -111,7 +113,7 @@ class CodeDiff extends StatelessComponent {
     required Color prefixColor,
     required Color contentColor,
     Color? backgroundColor,
-    String? language,
+    TextSpan? highlightedContent,
   }) {
     final lineNumberStr = lineNumber != null
         ? lineNumber.toString().padLeft(lineNumberWidth)
@@ -142,18 +144,11 @@ class CodeDiff extends StatelessComponent {
         // Space after prefix
         Text(' ', style: TextStyle(backgroundColor: backgroundColor)),
 
-        // Code content with syntax highlighting
+        // Code content with syntax highlighting (pre-computed or fallback to plain text)
         Expanded(
           child: Container(
-            child: language != null
-                ? RichText(
-                    text: SyntaxHighlighter.highlightCode(
-                      content,
-                      language,
-                      backgroundColor: backgroundColor,
-                      syntaxColors: theme.syntax,
-                    ),
-                  )
+            child: highlightedContent != null
+                ? RichText(text: highlightedContent)
                 : Text(
                     content,
                     style: TextStyle(

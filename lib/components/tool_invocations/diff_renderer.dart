@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'shared/code_diff.dart';
 import 'default_renderer.dart';
 import '../../utils/syntax_highlighter.dart';
+import '../../theme/theme.dart';
 
 /// Renderer for Write/Edit/MultiEdit tool invocations with successful results.
 /// Shows code diffs with syntax highlighting.
@@ -31,30 +32,90 @@ class _DiffRendererState extends State<DiffRenderer> {
   static final _lineValidationRegex = RegExp(r'^\s*\d+→');
   static final _lineParseRegex = RegExp(r'^\s*(\d+)→(.*)');
 
-  late final List<DiffLine> _cachedDiffLines;
+  late final List<DiffLine> _rawDiffLines;
   late final String? _cachedFormattedPath;
   late final bool _shouldUseFallback;
+  late final String? _language;
+
+  // Cached diff lines with pre-computed syntax highlighting
+  List<DiffLine>? _cachedHighlightedLines;
 
   @override
   void initState() {
     super.initState();
 
-    // Get the file path from typed invocation
+    // Get the file path and language from typed invocation
     if (component.invocation is WriteToolInvocation) {
       final typed = component.invocation as WriteToolInvocation;
       _cachedFormattedPath = typed.getRelativePath(component.workingDirectory);
+      _language = SyntaxHighlighter.detectLanguage(typed.filePath);
     } else if (component.invocation is EditToolInvocation) {
       final typed = component.invocation as EditToolInvocation;
       _cachedFormattedPath = typed.getRelativePath(component.workingDirectory);
+      _language = SyntaxHighlighter.detectLanguage(typed.filePath);
     } else {
       _cachedFormattedPath = null;
+      _language = null;
     }
 
-    // Create diff lines
-    _cachedDiffLines = _createDiffLines();
+    // Create diff lines (without highlights - those require theme from context)
+    _rawDiffLines = _createDiffLines();
 
     // Check if we should use fallback
-    _shouldUseFallback = _cachedDiffLines.isEmpty;
+    _shouldUseFallback = _rawDiffLines.isEmpty;
+  }
+
+  /// Get diff lines with pre-computed syntax highlighting.
+  /// Highlights are computed lazily on first access since they require theme from context.
+  List<DiffLine> _getHighlightedLines(BuildContext context) {
+    if (_cachedHighlightedLines != null) {
+      return _cachedHighlightedLines!;
+    }
+
+    // No language detected, return raw lines
+    final language = _language;
+    if (language == null) {
+      _cachedHighlightedLines = _rawDiffLines;
+      return _cachedHighlightedLines!;
+    }
+
+    final theme = VideTheme.of(context);
+
+    // Pre-compute syntax highlighting for all lines
+    _cachedHighlightedLines = _rawDiffLines.map((line) {
+      // Determine background color based on line type
+      Color? backgroundColor;
+      switch (line.type) {
+        case DiffLineType.added:
+          backgroundColor = theme.diff.addedBackground;
+          break;
+        case DiffLineType.removed:
+          backgroundColor = theme.diff.removedBackground;
+          break;
+        case DiffLineType.unchanged:
+        case DiffLineType.header:
+          backgroundColor = null;
+          break;
+      }
+
+      // Compute highlighted content
+      final highlightedContent = SyntaxHighlighter.highlightCode(
+        line.content,
+        language,
+        backgroundColor: backgroundColor,
+        syntaxColors: theme.syntax,
+      );
+
+      return DiffLine(
+        lineNumber: line.lineNumber,
+        type: line.type,
+        content: line.content,
+        language: line.language,
+        highlightedContent: highlightedContent,
+      );
+    }).toList();
+
+    return _cachedHighlightedLines!;
   }
 
   @override
@@ -81,10 +142,10 @@ class _DiffRendererState extends State<DiffRenderer> {
           // Tool header
           _buildHeader(statusColor, statusIndicator),
 
-          // Diff view
+          // Diff view (with pre-computed syntax highlighting)
           Container(
             padding: EdgeInsets.only(left: 2),
-            child: CodeDiff(fileName: _cachedFormattedPath, lines: _cachedDiffLines),
+            child: CodeDiff(fileName: _cachedFormattedPath, lines: _getHighlightedLines(context)),
           ),
         ],
       ),
@@ -131,27 +192,25 @@ class _DiffRendererState extends State<DiffRenderer> {
   List<DiffLine> _createDiffLines() {
     if (component.invocation is WriteToolInvocation) {
       final typed = component.invocation as WriteToolInvocation;
-      final language = SyntaxHighlighter.detectLanguage(typed.filePath);
-      return _parseWriteToolResult(typed, language);
+      return _parseWriteToolResult(typed);
     } else if (component.invocation is EditToolInvocation) {
       final typed = component.invocation as EditToolInvocation;
-      final language = SyntaxHighlighter.detectLanguage(typed.filePath);
-      return _parseEditResult(typed, language);
+      return _parseEditResult(typed);
     }
 
     return [];
   }
 
-  List<DiffLine> _parseWriteToolResult(WriteToolInvocation invocation, String? language) {
+  List<DiffLine> _parseWriteToolResult(WriteToolInvocation invocation) {
     // For Write tool, show all lines as added
     final lines = invocation.content.split('\n');
     return List.generate(
       lines.length,
-      (i) => DiffLine(lineNumber: i + 1, type: DiffLineType.added, content: lines[i], language: language),
+      (i) => DiffLine(lineNumber: i + 1, type: DiffLineType.added, content: lines[i]),
     );
   }
 
-  List<DiffLine> _parseEditResult(EditToolInvocation invocation, String? language) {
+  List<DiffLine> _parseEditResult(EditToolInvocation invocation) {
     final lines = <DiffLine>[];
     final resultContent = component.invocation.resultContent ?? '';
 
@@ -197,7 +256,7 @@ class _DiffRendererState extends State<DiffRenderer> {
           lineType = DiffLineType.unchanged;
         }
 
-        lines.add(DiffLine(lineNumber: lineNumber, type: lineType, content: content, language: language));
+        lines.add(DiffLine(lineNumber: lineNumber, type: lineType, content: content));
       }
     }
 

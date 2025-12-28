@@ -101,10 +101,14 @@ class SyntaxHighlighter {
   }
 
   /// Convert highlight.js nodes to nocterm TextSpan
+  ///
+  /// [parentClassName] is passed down from parent nodes so that child nodes
+  /// can inherit the classification when their own className is null or "none".
   static TextSpan _convertNodesToTextSpan(
     List<Node> nodes, {
     Color? backgroundColor,
     required VideSyntaxColors syntaxColors,
+    String? parentClassName,
   }) {
     if (nodes.isEmpty) {
       return TextSpan(
@@ -116,11 +120,17 @@ class SyntaxHighlighter {
     final children = <TextSpan>[];
 
     for (final node in nodes) {
+      // Determine the effective className: use node's className if valid,
+      // otherwise fall back to parentClassName
+      final nodeClassName = node.className;
+      final effectiveClassName = (nodeClassName != null && nodeClassName != 'none')
+          ? nodeClassName
+          : parentClassName;
+
       if (node.value != null && node.value!.isNotEmpty) {
         // Leaf node with text content
-        final className = node.className;
-        final color = className != null
-            ? _getColorForClass(className, syntaxColors)
+        final color = effectiveClassName != null
+            ? _getColorForClass(effectiveClassName, syntaxColors)
             : syntaxColors.plain;
 
         children.add(
@@ -132,11 +142,12 @@ class SyntaxHighlighter {
       }
 
       if (node.children.isNotEmpty) {
-        // Node with children - recursively process them
+        // Node with children - recursively process them, passing down the className
         final childrenSpans = _convertNodesToTextSpan(
           node.children,
           backgroundColor: backgroundColor,
           syntaxColors: syntaxColors,
+          parentClassName: effectiveClassName,
         );
 
         // If childrenSpans has children, add them all
