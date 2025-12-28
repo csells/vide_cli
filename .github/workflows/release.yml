@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 env:
-  DART_SDK: "3.8.0"
+  DART_SDK: "3.10.7"
 
 jobs:
   build-macos-arm64:
