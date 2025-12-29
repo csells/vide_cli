@@ -9,6 +9,7 @@ import 'package:sentry/sentry.dart';
 import 'package:uuid/uuid.dart';
 import 'flutter_instance.dart';
 import 'synthetic_main_generator.dart';
+import 'utils/image_resizer.dart';
 
 /// MCP server for managing Flutter application runtime instances
 class FlutterRuntimeServer extends McpServerBase {
@@ -26,6 +27,12 @@ class FlutterRuntimeServer extends McpServerBase {
     } catch (e) {
       // Moondream not available - flutterAct will fail with clear error
     }
+  }
+
+  /// Creates an ImageContent from screenshot bytes, resizing if needed to fit Claude API limits.
+  ImageContent _createScreenshotContent(List<int> screenshotBytes) {
+    final resizedBytes = resizeImageIfNeeded(screenshotBytes);
+    return ImageContent(data: base64.encode(resizedBytes), mimeType: 'image/png');
   }
 
   /// Report a flutter runtime operation error to Sentry with context
@@ -558,7 +565,7 @@ Instance ID: $instanceId
 
           // Return the screenshot as an image content block with base64 encoded data
           return CallToolResult.fromContent(
-            content: [ImageContent(data: base64.encode(screenshotBytes), mimeType: 'image/png')],
+            content: [_createScreenshotContent(screenshotBytes)],
           );
         } catch (e, stackTrace) {
           await _reportError(e, stackTrace, 'flutterScreenshot', instanceId: instanceId);
@@ -718,7 +725,7 @@ Instance ID: $instanceId
 
             // Add screenshot if available
             if (resultScreenshot != null) {
-              content.add(ImageContent(data: base64.encode(resultScreenshot), mimeType: 'image/png'));
+              content.add(_createScreenshotContent(resultScreenshot));
             }
 
             return CallToolResult.fromContent(content: content);
@@ -849,7 +856,7 @@ Instance ID: $instanceId
 
             // Add screenshot if available
             if (resultScreenshot != null) {
-              content.add(ImageContent(data: base64.encode(resultScreenshot), mimeType: 'image/png'));
+              content.add(_createScreenshotContent(resultScreenshot));
             }
 
             return CallToolResult.fromContent(content: content);
@@ -916,7 +923,7 @@ Instance ID: $instanceId
 
             // Add screenshot if available
             if (resultScreenshot != null) {
-              content.add(ImageContent(data: base64.encode(resultScreenshot), mimeType: 'image/png'));
+              content.add(_createScreenshotContent(resultScreenshot));
             }
 
             return CallToolResult.fromContent(content: content);
@@ -1092,7 +1099,7 @@ For example:
 
             // Add screenshot if available
             if (resultScreenshot != null) {
-              content.add(ImageContent(data: base64.encode(resultScreenshot), mimeType: 'image/png'));
+              content.add(_createScreenshotContent(resultScreenshot));
             }
 
             return CallToolResult.fromContent(content: content);
@@ -1244,7 +1251,7 @@ For example:
 
             // Add screenshot if available
             if (resultScreenshot != null) {
-              content.add(ImageContent(data: base64.encode(resultScreenshot), mimeType: 'image/png'));
+              content.add(_createScreenshotContent(resultScreenshot));
             }
 
             return CallToolResult.fromContent(content: content);
