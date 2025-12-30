@@ -59,6 +59,7 @@ class ClaudeConfig {
     final args = <String>[];
 
     // Session management
+    // Use --session-id for new sessions, --resume for existing sessions
     if (sessionId != null) {
       if (isFirstMessage) {
         args.addAll(['--session-id=$sessionId']);

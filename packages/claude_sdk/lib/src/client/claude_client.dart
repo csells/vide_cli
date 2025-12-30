@@ -96,6 +96,9 @@ class ClaudeClientImpl implements ClaudeClient {
   final ProcessLifecycleManager _lifecycleManager = ProcessLifecycleManager();
 
   bool _isInitialized = false;
+
+  /// Tracks whether this is the first message in the session.
+  /// Used to determine whether to use --session-id (new) or --resume (existing).
   bool _isFirstMessage = true;
 
   /// Queue for messages sent before init completes
@@ -156,9 +159,8 @@ class ClaudeClientImpl implements ClaudeClient {
       );
       _currentConversation = conversation;
       _conversationController.add(conversation);
+      // Existing conversation means we should use --resume for subsequent messages
       _isFirstMessage = false;
-    } else {
-      _isFirstMessage = true;
     }
 
     _isInitialized = true;
@@ -247,6 +249,9 @@ class ClaudeClientImpl implements ClaudeClient {
 
       // Listen to messages from control protocol
       controlProtocol.messages.listen(_handleControlProtocolMessage);
+
+      // After successful start, subsequent messages should use --resume
+      _isFirstMessage = false;
 
       completer.complete();
     } catch (e) {
@@ -343,7 +348,18 @@ class ClaudeClientImpl implements ClaudeClient {
       );
 
       // Restart the control protocol since it was aborted or not yet initialized
-      _startControlProtocol();
+      // Use unawaited async to avoid blocking, but ensure messages are flushed
+      () async {
+        try {
+          await _startControlProtocol();
+          _flushPendingMessages();
+        } catch (e) {
+          // If protocol startup fails, reset state so user can retry
+          _updateConversation(
+            _currentConversation.withState(ConversationState.idle),
+          );
+        }
+      }();
       return;
     }
 
@@ -425,7 +441,6 @@ class ClaudeClientImpl implements ClaudeClient {
 
   Future<void> clearConversation() async {
     _updateConversation(Conversation.empty());
-    // Reset to first message for new conversation
     _isFirstMessage = true;
   }
 
