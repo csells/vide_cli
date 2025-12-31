@@ -79,10 +79,10 @@ void main() {
     });
   });
 
-  group('SSEEvent', () {
+  group('WebSocketEvent', () {
     test('toJson produces valid JSON with all fields', () {
       final timestamp = DateTime(2024, 1, 1, 12, 0);
-      final event = SSEEvent(
+      final event = WebSocketEvent(
         agentId: 'agent-123',
         agentType: 'main',
         agentName: 'Main Agent',
@@ -103,25 +103,23 @@ void main() {
       expect(json['timestamp'], timestamp.toIso8601String());
     });
 
-    test('toSSEFormat produces valid SSE format', () {
-      final event = SSEEvent(
+    test('toJsonString produces valid JSON string', () {
+      final event = WebSocketEvent(
         agentId: 'agent-123',
         agentType: 'main',
         type: 'done',
       );
 
-      final sseString = event.toSSEFormat();
+      final jsonString = event.toJsonString();
+      final decoded = jsonDecode(jsonString);
 
-      expect(sseString.startsWith('data: '), isTrue);
-      expect(sseString.endsWith('\n\n'), isTrue);
-
-      final jsonPart = sseString.substring(6, sseString.length - 2);
-      final decoded = jsonDecode(jsonPart);
+      expect(decoded['agentId'], 'agent-123');
+      expect(decoded['agentType'], 'main');
       expect(decoded['type'], 'done');
     });
 
     test('message factory creates correct event', () {
-      final event = SSEEvent.message(
+      final event = WebSocketEvent.message(
         agentId: 'agent-1',
         agentType: 'implementation',
         content: 'Hello',
@@ -134,7 +132,7 @@ void main() {
     });
 
     test('toolUse factory creates correct event', () {
-      final event = SSEEvent.toolUse(
+      final event = WebSocketEvent.toolUse(
         agentId: 'agent-1',
         agentType: 'main',
         toolName: 'Write',
@@ -147,7 +145,7 @@ void main() {
     });
 
     test('toolResult factory creates correct event', () {
-      final event = SSEEvent.toolResult(
+      final event = WebSocketEvent.toolResult(
         agentId: 'agent-1',
         agentType: 'main',
         toolName: 'Read',
@@ -162,14 +160,14 @@ void main() {
     });
 
     test('done factory creates correct event', () {
-      final event = SSEEvent.done(agentId: 'agent-1', agentType: 'main');
+      final event = WebSocketEvent.done(agentId: 'agent-1', agentType: 'main');
 
       expect(event.type, 'done');
       expect(event.data, isNull);
     });
 
     test('error factory creates correct event', () {
-      final event = SSEEvent.error(
+      final event = WebSocketEvent.error(
         agentId: 'agent-1',
         agentType: 'main',
         message: 'Something went wrong',
@@ -182,7 +180,7 @@ void main() {
     });
 
     test('status factory creates correct event', () {
-      final event = SSEEvent.status(
+      final event = WebSocketEvent.status(
         agentId: 'agent-1',
         agentType: 'main',
         status: 'working',

@@ -57,8 +57,8 @@ class SendMessageRequest {
   Map<String, dynamic> toJson() => {'content': content};
 }
 
-/// Server-Sent Event for agent streaming
-class SSEEvent {
+/// WebSocket event for agent streaming
+class WebSocketEvent {
   final String agentId;
   final String agentType;
   final String? agentName;
@@ -67,7 +67,7 @@ class SSEEvent {
   final dynamic data;
   final DateTime timestamp;
 
-  SSEEvent({
+  WebSocketEvent({
     required this.agentId,
     required this.agentType,
     this.agentName,
@@ -87,13 +87,13 @@ class SSEEvent {
     'timestamp': timestamp.toIso8601String(),
   };
 
-  /// Format as SSE data line
-  String toSSEFormat() {
-    return 'data: ${jsonEncode(toJson())}\n\n';
+  /// Format as JSON string for WebSocket transmission
+  String toJsonString() {
+    return jsonEncode(toJson());
   }
 
   /// Create a message event
-  factory SSEEvent.message({
+  factory WebSocketEvent.message({
     required String agentId,
     required String agentType,
     String? agentName,
@@ -101,7 +101,7 @@ class SSEEvent {
     required String content,
     required String role,
   }) {
-    return SSEEvent(
+    return WebSocketEvent(
       agentId: agentId,
       agentType: agentType,
       agentName: agentName,
@@ -112,7 +112,7 @@ class SSEEvent {
   }
 
   /// Create a message delta event (streaming chunk)
-  factory SSEEvent.messageDelta({
+  factory WebSocketEvent.messageDelta({
     required String agentId,
     required String agentType,
     String? agentName,
@@ -120,7 +120,7 @@ class SSEEvent {
     required String delta,
     required String role,
   }) {
-    return SSEEvent(
+    return WebSocketEvent(
       agentId: agentId,
       agentType: agentType,
       agentName: agentName,
@@ -131,7 +131,7 @@ class SSEEvent {
   }
 
   /// Create a tool use event
-  factory SSEEvent.toolUse({
+  factory WebSocketEvent.toolUse({
     required String agentId,
     required String agentType,
     String? agentName,
@@ -139,7 +139,7 @@ class SSEEvent {
     required String toolName,
     required Map<String, dynamic> toolInput,
   }) {
-    return SSEEvent(
+    return WebSocketEvent(
       agentId: agentId,
       agentType: agentType,
       agentName: agentName,
@@ -150,7 +150,7 @@ class SSEEvent {
   }
 
   /// Create a tool result event
-  factory SSEEvent.toolResult({
+  factory WebSocketEvent.toolResult({
     required String agentId,
     required String agentType,
     String? agentName,
@@ -159,7 +159,7 @@ class SSEEvent {
     required dynamic result,
     bool? isError,
   }) {
-    return SSEEvent(
+    return WebSocketEvent(
       agentId: agentId,
       agentType: agentType,
       agentName: agentName,
@@ -174,13 +174,13 @@ class SSEEvent {
   }
 
   /// Create a done event (conversation turn complete)
-  factory SSEEvent.done({
+  factory WebSocketEvent.done({
     required String agentId,
     required String agentType,
     String? agentName,
     String? taskName,
   }) {
-    return SSEEvent(
+    return WebSocketEvent(
       agentId: agentId,
       agentType: agentType,
       agentName: agentName,
@@ -190,7 +190,7 @@ class SSEEvent {
   }
 
   /// Create an error event
-  factory SSEEvent.error({
+  factory WebSocketEvent.error({
     required String agentId,
     required String agentType,
     String? agentName,
@@ -198,7 +198,7 @@ class SSEEvent {
     required String message,
     String? stack,
   }) {
-    return SSEEvent(
+    return WebSocketEvent(
       agentId: agentId,
       agentType: agentType,
       agentName: agentName,
@@ -209,14 +209,14 @@ class SSEEvent {
   }
 
   /// Create a status event (agent status change)
-  factory SSEEvent.status({
+  factory WebSocketEvent.status({
     required String agentId,
     required String agentType,
     String? agentName,
     String? taskName,
     required String status,
   }) {
-    return SSEEvent(
+    return WebSocketEvent(
       agentId: agentId,
       agentType: agentType,
       agentName: agentName,
