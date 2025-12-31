@@ -2,7 +2,7 @@
 ///
 /// Error Response Formats:
 /// - HTTP endpoints return JSON: `{"error": "message"}`
-/// - WebSocket streams use SSEEvent: `{"type": "error", "data": {"message": "..."}}`
+/// - WebSocket streams use WebSocketEvent: `{"type": "error", "data": {"message": "..."}}`
 ///
 /// This difference is intentional - HTTP uses standard REST conventions while
 /// WebSocket uses our structured event format for consistency with other events.
@@ -24,7 +24,7 @@ import '../services/network_cache_manager.dart';
 
 final _log = Logger('NetworkRoutes');
 
-/// Bundles common agent metadata used in SSE events.
+/// Bundles common agent metadata used in WebSocket events.
 class _AgentContext {
   final String agentId;
   final String agentType;
@@ -51,7 +51,7 @@ class _AgentContext {
         if (response.toolUseId != null) {
           _toolNamesByUseId[response.toolUseId!] = response.toolName;
         }
-        final event = SSEEvent.toolUse(
+        final event = WebSocketEvent.toolUse(
           agentId: agentId,
           agentType: agentType,
           agentName: agentName,
@@ -63,7 +63,7 @@ class _AgentContext {
       } else if (response is ToolResultResponse) {
         // Look up the tool name from the original tool_use event
         final toolName = _toolNamesByUseId[response.toolUseId] ?? 'unknown';
-        final event = SSEEvent.toolResult(
+        final event = WebSocketEvent.toolResult(
           agentId: agentId,
           agentType: agentType,
           agentName: agentName,
@@ -80,7 +80,7 @@ class _AgentContext {
   /// Send an error event if conversation has an error
   void sendErrorIfPresent(Conversation conversation) {
     if (conversation.currentError != null) {
-      final event = SSEEvent.error(
+      final event = WebSocketEvent.error(
         agentId: agentId,
         agentType: agentType,
         agentName: agentName,
@@ -320,7 +320,7 @@ Future<void> _setupAgentWebSocket(
     final network = await cacheManager.getNetwork(networkId);
     if (network == null) {
       _log.warning('Network not found: $networkId');
-      final errorEvent = SSEEvent.error(
+      final errorEvent = WebSocketEvent.error(
         agentId: agentId,
         agentType: 'unknown',
         message: 'Network not found - create it first via POST /networks',
@@ -348,7 +348,7 @@ Future<void> _setupAgentWebSocket(
 
     if (agentMetadata == null) {
       _log.warning('Agent not found in network: $agentId');
-      final errorEvent = SSEEvent.error(
+      final errorEvent = WebSocketEvent.error(
         agentId: agentId,
         agentType: 'unknown',
         message: 'Agent not found in network',
@@ -366,7 +366,7 @@ Future<void> _setupAgentWebSocket(
     final claudeClient = container.read(claudeProvider(agentMetadata.id));
     if (claudeClient == null) {
       _log.warning('Claude client not initialized for agent: $agentId');
-      final errorEvent = SSEEvent.error(
+      final errorEvent = WebSocketEvent.error(
         agentId: agentId,
         agentType: agentMetadata.type,
         agentName: agentMetadata.name,
@@ -383,7 +383,7 @@ Future<void> _setupAgentWebSocket(
     // immediately start listening in the same event loop iteration.
     await Future.delayed(const Duration(milliseconds: 10));
 
-    final statusEvent = SSEEvent.status(
+    final statusEvent = WebSocketEvent.status(
       agentId: agentId,
       agentType: agentMetadata.type,
       agentName: agentMetadata.name,
@@ -439,7 +439,7 @@ Future<void> _setupAgentWebSocket(
       },
       onError: (error) {
         _log.warning('Conversation stream error: $error');
-        final errorEvent = SSEEvent.error(
+        final errorEvent = WebSocketEvent.error(
           agentId: ctx.agentId,
           agentType: ctx.agentType,
           agentName: ctx.agentName,
@@ -459,7 +459,7 @@ Future<void> _setupAgentWebSocket(
       _log.info(
         '[WebSocket] Turn complete event received! Sending done event to client',
       );
-      final doneEvent = SSEEvent.done(
+      final doneEvent = WebSocketEvent.done(
         agentId: ctx.agentId,
         agentType: ctx.agentType,
         agentName: ctx.agentName,
@@ -489,7 +489,7 @@ Future<void> _setupAgentWebSocket(
     );
   } catch (e, stack) {
     _log.severe('[_setupAgentWebSocket] Error: $e', e, stack);
-    final errorEvent = SSEEvent.error(
+    final errorEvent = WebSocketEvent.error(
       agentId: agentId,
       agentType: 'unknown',
       message: 'Stream setup failed: $e',
@@ -518,7 +518,7 @@ void _sendFullConversationState(Conversation conversation, _AgentContext ctx) {
       _log.info(
         '[_sendFullConversationState] Sending message $i: role=${message.role}, contentLength=${message.content.length}',
       );
-      final messageEvent = SSEEvent.message(
+      final messageEvent = WebSocketEvent.message(
         agentId: ctx.agentId,
         agentType: ctx.agentType,
         agentName: ctx.agentName,
@@ -582,7 +582,7 @@ void _handleConversationUpdate(
       '[_handleConversationUpdate] NEW MESSAGE: role=${latestMessage.role}, contentLength=$currentContentLength',
     );
     if (latestMessage.content.isNotEmpty) {
-      final messageEvent = SSEEvent.message(
+      final messageEvent = WebSocketEvent.message(
         agentId: ctx.agentId,
         agentType: ctx.agentType,
         agentName: ctx.agentName,
@@ -607,7 +607,7 @@ void _handleConversationUpdate(
     final delta = latestMessage.content.substring(state.lastContentLength);
     _log.fine('[_handleConversationUpdate] DELTA: ${delta.length} chars');
     if (delta.isNotEmpty) {
-      final deltaEvent = SSEEvent.messageDelta(
+      final deltaEvent = WebSocketEvent.messageDelta(
         agentId: ctx.agentId,
         agentType: ctx.agentType,
         agentName: ctx.agentName,

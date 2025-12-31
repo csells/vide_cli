@@ -44,7 +44,7 @@ Transform Vide CLI from a pure TUI application into a dual-interface architectur
 - **Architecture**: Separate processes - REST API server runs independently from TUI
 - **Security**: None for MVP (localhost testing only) - add authentication post-MVP
 - **Sessions**: Separate agent network sessions - REST and TUI don't share state
-- **Scope**: Minimal MVP - Start session with prompt, get agent response via SSE streaming
+- **Scope**: Minimal MVP - Start session with prompt, get agent response via WebSocket streaming
 - **Server binding**: Bind to loopback only and auto-select an unused port; print full URL on startup
 
 ## Implementation Decisions (from user Q&A)
@@ -539,7 +539,7 @@ void main(List<String> args) async {
    ```
    **Requirements**:
    - `workingDirectory` is required for MVP
-   - Response MUST include `mainAgentId` so client can open SSE stream immediately
+   - Response MUST include `mainAgentId` so client can open WebSocket stream immediately
    - `mainAgentId` is the first agent in the network (the orchestrator agent)
 
 2. **POST /api/v1/networks/:networkId/messages** - Send message to agent
@@ -549,9 +549,9 @@ void main(List<String> args) async {
    ```
    **Note**: Messages are automatically queued if agent is busy. ClaudeClient has built-in FIFO message queue (`_inbox`), so concurrent requests are handled sequentially.
 
-3. **GET /api/v1/networks/:networkId/agents/:agentId/stream** - Stream agent responses (SSE)
+3. **GET /api/v1/networks/:networkId/agents/:agentId/stream** - Stream agent responses (WebSocket)
    ```
-   Response: Server-Sent Events stream
+   Response: WebSocket stream (JSON events)
    Event format (includes agent context for multiplexing):
    data: {
      "agentId": "uuid",
@@ -610,7 +610,7 @@ void main(List<String> args) async {
    ```
    **Sub-agent Streaming**: Main agent stream includes ALL network activity (multiplexed). When main agent spawns sub-agents (implementation, context collection, etc.), their activity appears in the main stream. Each event includes `agentId`, `agentType`, `agentName`, and `taskName` so the client can correctly attribute output and display agent-specific UI (e.g., collapsible sections per agent).
 
-**Implementation note**: Endpoints run actual ClaudeClient instances. SSE streams real-time agent responses.
+**Implementation note**: Endpoints run actual ClaudeClient instances. WebSocket streams real-time agent responses.
 **Working directory behavior**:
 - On `POST /networks`, call `startNew(initialMessage, workingDirectory: userRequestedDirectory)` which atomically creates the network with the working directory set. This is stored in `worktreePath` and persisted immediately.
 - On `/messages` and `/stream`, load the network from persistence and call `resume(network)`. The persisted `worktreePath` is automatically used by all agents via `effectiveWorkingDirectory`.
@@ -643,9 +643,9 @@ void main(List<String> args) async {
 **Key DTOs**:
 - `CreateNetworkRequest` - { initialMessage, workingDirectory (required) }
 - `SendMessageRequest` - { content }
-- `SSEEvent` - Enhanced for multiplexing:
+- `WebSocketEvent` - Enhanced for multiplexing:
   ```dart
-  class SSEEvent {
+  class WebSocketEvent {
     final String agentId;       // Which agent produced this event
     final String agentType;     // "main", "implementation", "planning", etc.
     final String? agentName;    // Human-readable name (e.g., "Auth Fix")
@@ -685,9 +685,9 @@ void main(List<String> args) async {
 **Test scenario**: End-to-end chat flow
 1. Start server (from `packages/vide_server`): `dart run bin/vide_server.dart`
 2. Create network (use printed URL): `curl -X POST http://127.0.0.1:<port>/api/v1/networks -d '{"initialMessage":"Hello","workingDirectory":"."}'`
-3. Open SSE stream in browser or curl
+3. Open WebSocket connection in browser or wscat
 4. Send message: `curl -X POST http://127.0.0.1:<port>/api/v1/networks/{id}/messages -d '{"content":"Write hello.dart"}'`
-5. Watch agent response in SSE stream
+5. Watch agent response in WebSocket stream
 
 #### 3.2 Documentation
 **New files**:
@@ -713,11 +713,11 @@ void main(List<String> args) async {
 **packages/vide_server/** (8 files, ~750 lines total for MVP)
 - `pubspec.yaml` - Server package definition
 - `bin/vide_server.dart` - Server entry point (100 lines)
-- `lib/routes/network_routes.dart` - 3 core endpoints with SSE (200 lines)
+- `lib/routes/network_routes.dart` - 3 core endpoints with WebSocket streaming (200 lines)
 - `lib/middleware/cors_middleware.dart` - CORS headers (40 lines)
 - `lib/services/simple_permission_service.dart` - Auto-approve/deny rules (80 lines)
 - `lib/services/network_cache_manager.dart` - Hybrid caching for networks (40 lines)
-- `lib/dto/network_dto.dart` - Request/response schemas including enhanced SSEEvent (150 lines)
+- `lib/dto/network_dto.dart` - Request/response schemas including WebSocketEvent (150 lines)
 - `lib/config/server_config.dart` - Port parsing and loopback binding rules (40 lines)
 
 **vide_cli (root)** (1 file, TUI-specific)
@@ -784,7 +784,7 @@ void main(List<String> args) async {
                │ HTTP/REST
 ┌──────────────▼──────────────────────────┐
 │  vide_server (packages/vide_server)     │
-│  ├─ REST API Endpoints (SSE streaming)  │
+│  ├─ REST API Endpoints (WebSocket)      │
 │  ├─ Simple Permission Service (MVP)     │
 │  └─ Uses vide_core services             │
 └──────────────┬──────────────────────────┘
@@ -986,11 +986,11 @@ When deploying beyond localhost (post-MVP):
 
 ### Phase 5: Advanced Features
 - Webhook permission callbacks (replace simple auto-approve/deny)
-- WebSocket support (alternative to SSE)
+- HTTP/2 streaming support (alternative to WebSocket)
 - Multi-client real-time session sharing
   - Allow same user to access sessions from multiple devices (desktop, phone, etc.)
   - Real-time synchronization of agent network state across all logged-in clients
-  - Live updates propagated to all connected clients via SSE/WebSocket
+  - Live updates propagated to all connected clients via WebSocket
   - Shared session state maintained on server
 - Additional REST endpoints:
   - GET /networks (list all networks)

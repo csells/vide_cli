@@ -256,7 +256,7 @@ Future<void> _runRepl(String serverUrl, String workingDir, int port) async {
 String? _currentStreamRole;
 final _currentStreamBuffer = StringBuffer();
 
-/// Handle different SSE event types
+/// Handle different WebSocket event types
 void _handleEvent(Map<String, dynamic> event) {
   final type = event['type'];
   final agentName = event['agentName'] ?? 'Agent';

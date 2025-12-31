@@ -77,8 +77,8 @@ vide_cli/
 ┌─────────────────────────────────────────────────────────────┐
 │                      Domain Layer                            │
 │  ┌─────────────┐ ┌─────────────┐ ┌─────────────────────────┐│
-│  │   Models    │ │ Repositories│ │   LlmProvider (Custom)  ││
-│  │  (Network,  │ │ (Interfaces)│ │  for dartantic_chat     ││
+│  │   Models    │ │ Repositories│ │ ChatHistoryProvider     ││
+│  │  (Network,  │ │ (Interfaces)│ │  (Custom) for           ││
 │  │   Agent)    │ │             │ │                         ││
 │  └─────────────┘ └─────────────┘ └─────────────────────────┘│
 └─────────────────────────────────────────────────────────────┘
@@ -118,6 +118,34 @@ vide_cli/
 
 ---
 
+## 2.5 Prerequisites (vide_server)
+
+Before starting vide_flutter development, the following vide_server features must be implemented and tested:
+
+### Multiplexed WebSocket Streaming
+- Single WebSocket endpoint per network: `ws://.../api/v1/networks/:id/stream`
+- All agent events (main + spawned agents) multiplexed on this single stream
+- Each event includes attribution fields: `agentId`, `agentType`, `agentName`, `taskName`
+- Client receives unified timeline without managing multiple WebSocket connections
+
+### Filesystem Browsing API
+- `GET /api/v1/filesystem?parent=...` endpoint for hierarchical directory listing
+  - `parent` parameter: path to list children of; `null`/omitted = server-configured root
+  - Returns entries: `{ name, path, isDirectory }` for both files and folders
+- `POST /api/v1/filesystem` endpoint for creating new folders
+  - Body: `{ parent: string, name: string }`
+  - Creates folder at `parent/name`; `parent` must be within server root
+  - Returns: `{ path: string }` of created folder
+- Server enforces a configurable root directory (prevents access outside allowed scope)
+- **Client behavior for folder selection:**
+  - Filters results to show folders only
+  - Caches directory listings for the duration of the browsing session
+  - Supports progressive expansion (load children on demand)
+  - Allows creating new project folders before selection
+- **Future use:** Enables file explorer panel with full file/folder tree
+
+---
+
 ## 3. Phase Breakdown
 
 ### Phase 1: MVP Core Chat (~2-3 days)
@@ -139,16 +167,14 @@ vide_cli/
 - `ServerConfigDialog` - Configure server URL
 - `FolderBrowserDialog` - Browse and select working directory from server filesystem
 - `NetworkListTile` - Display network in list
-- `ChatView` - dartantic_chat LlmChatView wrapper
+- `ChatView` - dartantic_chat AgentChatView wrapper
 - `MessageBubble` - Basic message display
 
 #### API Integration
 - `POST /api/v1/networks` - Create network
 - `POST /api/v1/networks/:id/messages` - Send message
-- `ws://.../api/v1/networks/:id/agents/:agentId/stream` - WebSocket stream
-- `GET /api/v1/filesystem` - List directories (requires server support)
-
-> **Note:** The filesystem endpoint requires vide_server to implement a directory listing API with a configurable base directory for security.
+- `ws://.../api/v1/networks/:id/stream` - WebSocket stream (multiplexed, all agents)
+- `GET /api/v1/filesystem?parent=...` - List directory contents (prerequisite)
 
 #### Success Criteria
 - Can connect to localhost vide_server
@@ -168,7 +194,6 @@ vide_cli/
 - [ ] Todo list rendering
 - [ ] Agent status indicators (working/waitingForAgent/waitingForUser/idle)
 - [ ] Unified timeline with multi-agent activity (all agents interleaved with attribution)
-- [ ] Context usage tracking display (token/cost visualization)
 
 #### Screens/Pages
 - Enhanced ChatPage with tool visualizations
@@ -180,7 +205,6 @@ vide_cli/
 - `TodoListWidget` - Checkable todo items
 - `AgentStatusIndicator` - Status badge (working/waitingForAgent/waitingForUser/idle)
 - `AgentAttributionBadge` - Shows which agent sent a message in unified timeline
-- `ContextUsageBar` - Token usage visualization
 - `ToolCallCard` - Generic tool call wrapper
 
 #### API Integration
@@ -201,7 +225,7 @@ vide_cli/
 #### Features
 - [ ] Network history and persistence (local storage)
 - [ ] Resume previous networks
-- [ ] Plan/YOLO/Execute/Ask mode selection
+- [ ] Permission mode UI (surfaces tool approval requests from WebSocket stream)
 - [ ] Model selection dropdown
 - [ ] Memory viewer (read-only)
 - [ ] Settings page (theme, server URL, preferences)
@@ -213,20 +237,20 @@ vide_cli/
 3. **MemoryViewerPage** - View agent memories
 
 #### Widgets/Components
-- `ModeSelector` - Plan/YOLO/Execute/Ask buttons
+- `ToolApprovalDialog` - Displays pending tool calls requiring user approval
 - `ModelDropdown` - Model selection
 - `MemoryEntryCard` - Display memory entry
 - `NetworkHistoryList` - Searchable history
 - `ThemeToggle` - Light/dark mode
 
 #### API Integration
-- `GET /api/v1/networks` - List networks (Phase 5 server feature)
+- `GET /api/v1/networks` - List networks (future server endpoint)
 - `GET /api/v1/networks/:id` - Get network details
 - `GET /api/v1/networks/:id/memory` - Get memories (future)
 
 #### Success Criteria
 - Can browse network history
-- Mode selection affects agent behavior
+- Tool approval requests display and user can approve/deny
 - Responsive on mobile viewport
 - Settings persist across sessions
 
@@ -261,16 +285,16 @@ vide_cli/
 
 ## 4. Custom dartantic_chat Provider Design
 
-### LlmProvider Implementation
+### ChatHistoryProvider Implementation
 
-The dartantic_chat package requires implementing the `LlmProvider` interface to connect to custom backends. Our implementation uses WebSocket for real-time streaming.
+The dartantic_chat package requires implementing the `ChatHistoryProvider` interface to connect to custom backends. Our implementation uses WebSocket for real-time streaming.
 
 ```dart
-// lib/domain/vide_llm_provider.dart
+// lib/domain/vide_chat_history_provider.dart
 
 import 'package:dartantic_chat/dartantic_chat.dart';
 
-class VideLlmProvider implements LlmProvider {
+class VideChatHistoryProvider implements ChatHistoryProvider {
   final VideApiClient _apiClient;
   final String _networkId;
   final String _mainAgentId;
@@ -282,7 +306,12 @@ class VideLlmProvider implements LlmProvider {
   // Accumulated text for current response (built from deltas)
   String _currentResponseText = '';
 
-  VideLlmProvider({
+  // Current agent context (for multi-agent timeline attribution)
+  String? _currentAgentId;
+  String? _currentAgentType;
+  String? _currentAgentName;
+
+  VideChatHistoryProvider({
     required VideApiClient apiClient,
     required String networkId,
     required String mainAgentId,
@@ -303,6 +332,11 @@ class VideLlmProvider implements LlmProvider {
 
     // 3. Listen to WebSocket stream for events
     await for (final event in _wsClient.events) {
+      // Track current agent for multi-agent timeline attribution
+      _currentAgentId = event.agentId;
+      _currentAgentType = event.agentType;
+      _currentAgentName = event.agentName;
+
       switch (event.type) {
         case 'message':
           // Full message (first chunk or non-streaming)
@@ -319,8 +353,16 @@ class VideLlmProvider implements LlmProvider {
             yield _currentResponseText;
           }
         case 'done':
-          // Turn complete - finalize history
-          _history.add(ChatMessage.assistant(_currentResponseText));
+          // Turn complete - finalize history with agent attribution
+          _history.add(ChatMessage(
+            role: ChatMessageRole.model,
+            parts: [TextPart(_currentResponseText)],
+            metadata: {
+              'agentId': _currentAgentId,
+              'agentType': _currentAgentType,
+              'agentName': _currentAgentName,
+            },
+          ));
           return;
         case 'error':
           throw Exception(event.data['message'] as String? ?? 'Unknown error');
@@ -386,27 +428,38 @@ dartantic_chat supports custom response widgets via `responseBuilder`:
 ```dart
 // lib/presentation/widgets/chat/vide_chat_view.dart
 
-LlmChatView(
-  provider: videLlmProvider,
-  responseBuilder: (context, response) {
+AgentChatView(
+  provider: videChatHistoryProvider,
+  responseBuilder: (context, message) {
+    // Access agent metadata for multi-agent timeline attribution
+    final agentId = message.metadata?['agentId'] as String?;
+    final agentType = message.metadata?['agentType'] as String?;
+    final agentName = message.metadata?['agentName'] as String?;
+
     // Parse response for tool calls
-    final toolCalls = _parseToolCalls(response);
-    
-    if (toolCalls.isEmpty) {
-      // Plain text response
-      return MarkdownBody(data: response.text);
-    }
-    
-    // Mixed content: text + tool visualizations
+    final toolCalls = _parseToolCalls(message);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (response.textBeforeTools.isNotEmpty)
-          MarkdownBody(data: response.textBeforeTools),
-        for (final tool in toolCalls)
-          _buildToolWidget(tool),
-        if (response.textAfterTools.isNotEmpty)
-          MarkdownBody(data: response.textAfterTools),
+        // Show agent attribution badge for multi-agent timeline
+        if (agentType != null)
+          AgentAttributionBadge(
+            agentId: agentId!,
+            agentType: agentType,
+            agentName: agentName,
+          ),
+        // Message content
+        if (toolCalls.isEmpty)
+          MarkdownBody(data: message.text)
+        else ...[
+          if (message.textBeforeTools.isNotEmpty)
+            MarkdownBody(data: message.textBeforeTools),
+          for (final tool in toolCalls)
+            _buildToolWidget(tool),
+          if (message.textAfterTools.isNotEmpty)
+            MarkdownBody(data: message.textAfterTools),
+        ],
       ],
     );
   },
@@ -447,14 +500,56 @@ class WebSocketEvent with _$WebSocketEvent {
 }
 
 /// Event Types:
-/// - `connected` - Initial WebSocket connection established
-/// - `status` - Agent status changed (data: {status: "working" | "idle" | etc.})
+/// - `connected` - Initial WebSocket connection established (not a status value)
+/// - `status` - Agent status changed (data: {status: "idle" | "working" | "waitingForAgent" | "waitingForUser"})
 /// - `message` - New full message (data: {role: string, content: string})
 /// - `message_delta` - Streaming text chunk (data: {role: string, delta: string})
 /// - `tool_use` - Agent invoking a tool (data: {toolName: string, toolInput: object, toolUseId: string})
 /// - `tool_result` - Tool execution result (data: {toolName: string, result: string, isError: bool, toolUseId: string})
 /// - `done` - Agent turn complete
 /// - `error` - Error occurred (data: {message: string, stack?: string})
+```
+
+### Multi-Agent Timeline Support
+
+The unified timeline displays messages from all agents (main, implementation, planning, etc.) in chronological order with visual attribution. This is achieved by:
+
+1. **Agent metadata in ChatMessage**: Each message stores `agentId`, `agentType`, and `agentName` in `ChatMessage.metadata`
+2. **WebSocket event tracking**: The provider captures agent context from each WebSocket event
+3. **Custom responseBuilder**: Uses metadata to render `AgentAttributionBadge` showing which agent sent each message
+4. **Visual differentiation**: Different agent types can have distinct colors/icons (e.g., main agent = blue, implementation = green)
+
+```dart
+// Agent attribution badge widget
+class AgentAttributionBadge extends StatelessWidget {
+  final String agentId;
+  final String agentType;
+  final String? agentName;
+
+  Color get _badgeColor => switch (agentType) {
+    'main' => Colors.blue,
+    'implementation' => Colors.green,
+    'planning' => Colors.purple,
+    'contextCollection' => Colors.orange,
+    _ => Colors.grey,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: _badgeColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _badgeColor),
+      ),
+      child: Text(
+        agentName ?? agentType,
+        style: TextStyle(color: _badgeColor, fontSize: 12),
+      ),
+    );
+  }
+}
 ```
 
 ---
@@ -481,7 +576,7 @@ class WebSocketEvent with _$WebSocketEvent {
 │ │              │ │                                            │ │
 │ │              │ │                                            │ │
 │ │              │ ├────────────────────────────────────────────┤ │
-│ │              │ │ [Plan] [YOLO] [Execute] [Ask]   Model: ▼   │ │
+│ │              │ │                               Model: ▼     │ │
 │ │              │ ├────────────────────────────────────────────┤ │
 │ │              │ │ [Type your message...              ] [Send]│ │
 │ └──────────────┘ └────────────────────────────────────────────┘ │
@@ -499,7 +594,7 @@ class WebSocketEvent with _$WebSocketEvent {
 │  [Messages...]      │
 │                     │
 ├─────────────────────┤
-│ [P] [Y] [E] [A]  ▼  │
+│              ▼      │
 ├─────────────────────┤
 │ [Message...]  [📤]  │
 └─────────────────────┘
@@ -527,7 +622,7 @@ App
     │       │   │   └── MessageBubble
     │       │   │       ├── MarkdownContent
     │       │   │       └── ToolWidgets
-    │       │   ├── ModeSelector
+    │       │   ├── ToolApprovalDialog (modal, shown when approval needed)
     │       │   └── MessageInput
     │       ├── HistoryPage
     │       └── SettingsPage
@@ -592,22 +687,33 @@ class VideApiClient {
     });
   }
 
-  /// List directories for folder browser (requires server support)
-  Future<List<DirectoryEntry>> listDirectory({
-    String? path,
-  }) async {
+  /// List directory contents for folder browser
+  /// [parent] - path to list children of; null = server root
+  Future<List<DirectoryEntry>> listDirectory({String? parent}) async {
     final response = await _dio.get('/api/v1/filesystem', queryParameters: {
-      if (path != null) 'path': path,
+      if (parent != null) 'parent': parent,
     });
     return (response.data['entries'] as List)
         .map((e) => DirectoryEntry.fromJson(e))
         .toList();
   }
 
-  /// Get WebSocket URL for streaming events
-  String getWebSocketUrl(String networkId, String agentId) {
+  /// Create a new folder
+  /// [parent] - parent directory path (must be within server root)
+  /// [name] - name of the new folder
+  /// Returns the full path of the created folder
+  Future<String> createFolder({required String parent, required String name}) async {
+    final response = await _dio.post('/api/v1/filesystem', data: {
+      'parent': parent,
+      'name': name,
+    });
+    return response.data['path'] as String;
+  }
+
+  /// Get WebSocket URL for streaming events (multiplexed stream for all agents)
+  String getWebSocketUrl(String networkId) {
     final wsBase = _baseUrl.replaceFirst('http', 'ws');
-    return '$wsBase/api/v1/networks/$networkId/agents/$agentId/stream';
+    return '$wsBase/api/v1/networks/$networkId/stream';
   }
 }
 ```
@@ -627,11 +733,6 @@ class Network with _$Network {
     String? workingDirectory,
     String? worktreePath,         // Git worktree path if using worktrees
   }) = _Network;
-
-  /// Aggregate token usage across all agents
-  int get totalInputTokens => agents.fold(0, (sum, a) => sum + a.totalInputTokens);
-  int get totalOutputTokens => agents.fold(0, (sum, a) => sum + a.totalOutputTokens);
-  double get totalCostUsd => agents.fold(0.0, (sum, a) => sum + a.totalCostUsd);
 }
 
 // lib/data/models/agent.dart
@@ -643,12 +744,6 @@ class Agent with _$Agent {
     required String name,
     required AgentStatus status,
     String? currentTask,
-    // Token tracking (updated from completion events)
-    @Default(0) int totalInputTokens,
-    @Default(0) int totalOutputTokens,
-    @Default(0) int totalCacheReadInputTokens,
-    @Default(0) int totalCacheCreationInputTokens,
-    @Default(0.0) double totalCostUsd,
   }) = _Agent;
 }
 
@@ -661,20 +756,11 @@ enum AgentStatus {
   waitingForUser,   // Waiting for user input/approval
 }
 
-// lib/data/models/chat_message.dart
-@freezed
-class VideChatMessage with _$VideChatMessage {
-  const factory VideChatMessage({
-    required String id,
-    required String role,         // "user" | "assistant"
-    required String content,
-    required DateTime timestamp,
-    List<ToolCall>? toolCalls,
-    String? agentId,
-    String? agentName,
-    String? agentType,            // For unified timeline display
-  }) = _VideChatMessage;
-}
+// Note: Use ChatMessage from dartantic_interface package for chat history.
+// The ChatHistoryProvider interface requires ChatMessage, which supports:
+// - ChatMessageRole.user, ChatMessageRole.model, ChatMessageRole.system
+// - Parts: TextPart, DataPart, LinkPart, ToolPart
+// - Metadata map for agent attribution (agentId, agentType, agentName)
 
 // lib/data/models/tool_call.dart
 @freezed
@@ -704,7 +790,7 @@ class DirectoryEntry with _$DirectoryEntry {
 ### Caching Strategy
 - **Network list**: Cache in Riverpod provider, refresh on demand
 - **Messages**: Keep in memory during session, optionally persist to local storage
-- **SSE events**: Process and discard (not cached)
+- **WebSocket events**: Process and discard (not cached)
 
 ---
 
@@ -756,23 +842,9 @@ class CurrentNetwork extends _$CurrentNetwork {
 }
 
 // lib/providers/chat_provider.dart
-@riverpod
-class ChatMessages extends _$ChatMessages {
-  @override
-  List<VideChatMessage> build() => [];
-
-  void addMessage(VideChatMessage message) {
-    state = [...state, message];
-  }
-
-  void updateLastMessage(String content) {
-    if (state.isEmpty) return;
-    state = [
-      ...state.sublist(0, state.length - 1),
-      state.last.copyWith(content: content),
-    ];
-  }
-}
+// Note: ChatMessages provider uses ChatMessage from dartantic_interface.
+// The VideChatHistoryProvider manages message history internally,
+// so this provider is primarily for UI state synchronization.
 
 // lib/providers/websocket_provider.dart
 @riverpod
@@ -780,15 +852,16 @@ class WebSocketConnection extends _$WebSocketConnection {
   WebSocketClient? _client;
 
   @override
-  Stream<WebSocketEvent> build(String networkId, String agentId) async* {
+  Stream<WebSocketEvent> build(String networkId) async* {
     final api = ref.watch(apiClientProvider);
-    final wsUrl = api.getWebSocketUrl(networkId, agentId);
+    final wsUrl = api.getWebSocketUrl(networkId);
 
     _client = WebSocketClient();
     await _client!.connect(wsUrl);
 
     ref.onDispose(() => _client?.disconnect());
 
+    // All agent events are multiplexed on this single stream
     yield* _client!.events;
   }
 }
@@ -812,7 +885,7 @@ class AgentStatuses extends _$AgentStatuses {
 abstract class NetworkRepository {
   Future<Network> createNetwork(String message, String workingDir);
   Future<void> sendMessage(String networkId, String content);
-  Stream<SSEEvent> streamEvents(String networkId, String agentId);
+  Stream<WebSocketEvent> streamEvents(String networkId);  // Multiplexed stream
 }
 
 // lib/data/repositories/network_repository_impl.dart
@@ -1033,7 +1106,7 @@ packages/vide_flutter/
 │   │       ├── chat/
 │   │       │   ├── vide_chat_view.dart      # dartantic_chat wrapper
 │   │       │   ├── message_input.dart
-│   │       │   └── mode_selector.dart
+│   │       │   └── tool_approval_dialog.dart # Tool approval UI
 │   │       ├── tool_widgets/
 │   │       │   ├── diff_widget.dart
 │   │       │   ├── terminal_widget.dart
@@ -1042,7 +1115,6 @@ packages/vide_flutter/
 │   │       │   └── default_tool_widget.dart
 │   │       ├── common/
 │   │       │   ├── agent_status_indicator.dart
-│   │       │   ├── context_usage_bar.dart
 │   │       │   ├── copy_button.dart
 │   │       │   └── loading_skeleton.dart
 │   │       └── layout/
@@ -1154,8 +1226,8 @@ flutter:
 ### dartantic_chat Dependency
 
 The `dartantic_chat` package is an external dependency from the dartantic monorepo. It provides:
-- LlmProvider interface for custom backend integration
-- LlmChatView widget for chat UI
+- ChatHistoryProvider interface for custom backend integration
+- AgentChatView widget for chat UI
 - Custom response widgets via responseBuilder
 - Multi-agent timeline support
 
@@ -1236,10 +1308,8 @@ class EnvConfig {
 
 ### Advanced Features Beyond Phase 4
 - **Collaborative editing**: Multiple users on same network (requires auth)
-- **Voice input**: Speech-to-text for message input
 - **Image attachments**: Send screenshots to agent
 - **Plugin system**: Custom tool visualization plugins
-- **Analytics dashboard**: Token usage, cost tracking
 - **Export/import**: Export conversations to Markdown/JSON
 
 ---
@@ -1273,18 +1343,30 @@ class EnvConfig {
 |----------|--------|-------------|
 | `/api/v1/networks` | POST | Create new network |
 | `/api/v1/networks/:id/messages` | POST | Send message |
-| `/api/v1/networks/:id/agents/:agentId/stream` | WS | WebSocket event stream |
 
-### Required Server Additions
+### Prerequisite Endpoints (must be implemented before vide_flutter)
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/v1/filesystem` | GET | List directories for folder browser |
+| `/api/v1/networks/:id/stream` | WS | Multiplexed WebSocket stream (all agents) |
+| `/api/v1/filesystem` | GET | List directory contents |
+| `/api/v1/filesystem` | POST | Create new folder |
 
-**Filesystem Endpoint Details:**
-- Query param: `path` (optional) - directory to list, defaults to configured base
+**Multiplexed WebSocket Details:**
+- Single connection per network, receives events from all agents
+- Each event includes: `agentId`, `agentType`, `agentName`, `taskName` for attribution
+- Replaces per-agent streams with unified timeline approach
+
+**Filesystem GET Endpoint:**
+- Query param: `parent` (optional) - path to list children of; null/omitted = server root
 - Response: `{ entries: [{ name: string, path: string, isDirectory: bool }] }`
-- Server must configure a safe `baseDirectory` to restrict browsing scope
+- Returns both files and folders; client filters as needed
+
+**Filesystem POST Endpoint:**
+- Body: `{ parent: string, name: string }`
+- Creates folder at `parent/name`
+- Response: `{ path: string }` of created folder
+- Server configures root directory to restrict all operations within allowed scope
 
 ### Future Endpoints (Not Yet Implemented)
 
