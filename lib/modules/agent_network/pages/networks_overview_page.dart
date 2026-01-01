@@ -9,7 +9,6 @@ import 'package:vide_cli/modules/agent_network/state/agent_networks_state_notifi
 import 'package:vide_cli/components/attachment_text_field.dart';
 import 'package:vide_cli/theme/theme.dart';
 import 'package:vide_cli/constants/text_opacity.dart';
-import 'package:path/path.dart' as path;
 
 class NetworksOverviewPage extends StatefulComponent {
   const NetworksOverviewPage({super.key});
@@ -38,6 +37,15 @@ class _NetworksOverviewPageState extends State<NetworksOverviewPage> {
     }
   }
 
+  /// Abbreviates the path by replacing home directory with ~
+  String _abbreviatePath(String fullPath) {
+    final home = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
+    if (home != null && fullPath.startsWith(home)) {
+      return '~${fullPath.substring(home.length)}';
+    }
+    return fullPath;
+  }
+
   void _handleSubmit(Message message) async {
     // Start a new agent network with the full message (preserves attachments)
     // This returns immediately - client creation happens in background
@@ -54,9 +62,12 @@ class _NetworksOverviewPageState extends State<NetworksOverviewPage> {
   Component build(BuildContext context) {
     final theme = VideTheme.of(context);
 
-    // Get current directory name
+    // Get current directory path (abbreviated)
     final currentDir = Directory.current.path;
-    final dirName = path.basename(currentDir);
+    final abbreviatedPath = _abbreviatePath(currentDir);
+
+    // Check if we should show project type (not unknown)
+    final showProjectType = projectType != null && projectType != ProjectType.unknown;
 
     return Focusable(
       focused: true,
@@ -75,14 +86,35 @@ class _NetworksOverviewPageState extends State<NetworksOverviewPage> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(
-                dirName,
-                style: TextStyle(decoration: TextDecoration.underline, fontWeight: FontWeight.bold),
+              // ASCII Logo
+              AsciiText(
+                'VIDE',
+                font: AsciiFont.standard,
+                style: TextStyle(color: theme.base.primary),
               ),
               const SizedBox(height: 1),
-              // Project info badge
-              if (projectType != null) ...[
-                _ProjectTypeBadge(projectType: projectType!),
+              // Running in path (lighter text)
+              Text(
+                'Running in $abbreviatedPath',
+                style: TextStyle(
+                  color: theme.base.onSurface.withOpacity(TextOpacity.secondary),
+                ),
+              ),
+              const SizedBox(height: 1),
+              // Project type (only if detected and not unknown)
+              if (showProjectType) ...[
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Detected project type: ',
+                      style: TextStyle(
+                        color: theme.base.onSurface.withOpacity(TextOpacity.tertiary),
+                      ),
+                    ),
+                    _ProjectTypeBadge(projectType: projectType!),
+                  ],
+                ),
                 const SizedBox(height: 1),
               ],
               Container(
