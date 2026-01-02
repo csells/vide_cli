@@ -170,6 +170,7 @@ Before starting vide_flutter development, the following vide_server features mus
   - Body: `{ parent: string, name: string }`
   - Creates folder at `parent/name`; `parent` must be within server root
   - Returns: `{ path: string }` of created folder
+- Root directory configured via server config file (`~/.vide/api/config.json`)
 - Server enforces a configurable root directory (prevents access outside allowed scope)
 - **Client behavior for folder selection:**
   - Filters results to show folders only
@@ -321,13 +322,15 @@ Before starting vide_flutter development, the following vide_server features mus
 
 ### JSON Event Accumulation Model
 
-The `ChatMessage.text` field contains a JSON structure that accumulates WebSocket events as they stream in. The `responseBuilder` parses this JSON to render rich Flutter widgets.
+The server sends raw WebSocket events (deltas). The **client** is responsible for accumulating these into a JSON structure stored in `ChatMessage.text`. The `responseBuilder` parses this JSON to render rich Flutter widgets.
 
-**Event accumulation flow:**
-1. WebSocket receives `text_event` → Append to `events` array in JSON
-2. WebSocket receives `tool_call_event` → Append tool call to `events` array
-3. WebSocket receives `tool_result_event` → Append tool result to `events` array
-4. `responseBuilder` parses the JSON and renders appropriate widgets
+**Event accumulation flow (client-side):**
+1. WebSocket receives `message_delta` → Append text to current text event in JSON
+2. WebSocket receives `tool_use` → Append tool call event to JSON
+3. WebSocket receives `tool_result` → Append tool result event to JSON
+4. On each update, `responseBuilder` re-parses the JSON and renders widgets
+
+**Important**: The server sends raw delta events. The client accumulates them. This allows for real-time streaming UI updates as each delta arrives.
 
 **ChatMessage.text JSON structure:**
 ```json

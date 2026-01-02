@@ -18,6 +18,12 @@
 - ✅ Added integration tests for end-to-end flow and duplicate content detection
 - ⬜ Multi-turn conversation test has pre-existing flakiness (timeout issues)
 
+**Phase 2.5: GUI App Prerequisites 🆕** (Required before vide_flutter)
+- ⬜ Multiplexed bidirectional WebSocket at /api/v1/networks/{networkId}/stream (replaces per-agent streams)
+- ⬜ Bidirectional WebSocket support for permission requests/responses
+- ⬜ Model selection support (Sonnet/Opus per-message)
+- ⬜ Filesystem browsing API (GET/POST /api/v1/filesystem)
+
 **Phase 3: NOT STARTED** (Final: Testing & Documentation)
 
 ### Bug Fixes (Phase 2)
@@ -659,6 +665,152 @@ void main(List<String> args) async {
 
 ---
 
+### Phase 2.5: GUI App Prerequisites (vide_flutter)
+
+These features must be implemented in vide_server before starting vide_flutter development.
+
+#### 2.5.1 Multiplexed Bidirectional WebSocket
+
+Replace the per-agent WebSocket streams with a single network-level multiplexed stream.
+
+**Current**: `GET /api/v1/networks/:networkId/agents/:agentId/stream` (per-agent)
+**New**: `GET /api/v1/networks/:networkId/stream` (per-network, multiplexed)
+
+**Migration**: The per-agent stream endpoint will be **removed** (not deprecated). Only the network-level multiplexed stream will be available.
+
+**Features**:
+- Single WebSocket connection per network receives events from ALL agents (main + spawned)
+- Each event includes attribution fields: `agentId`, `agentType`, `agentName`, `taskName`
+- WebSocket is bidirectional: server sends events, client can send responses
+- Client receives unified timeline without managing multiple connections
+
+**Event format** (server → client):
+```json
+{
+  "agentId": "uuid",
+  "agentType": "implementation",
+  "agentName": "Auth Fix",
+  "taskName": "Implementing login flow",
+  "type": "message_delta",
+  "data": {"role": "assistant", "delta": "Let me "},
+  "timestamp": "2025-12-21T10:00:00Z"
+}
+```
+
+#### 2.5.2 Bidirectional Permission Handling
+
+Add permission request/response flow via the WebSocket connection.
+
+**Permission request** (server → client):
+```json
+{
+  "type": "permission_request",
+  "agentId": "uuid",
+  "data": {
+    "requestId": "uuid",
+    "toolName": "Bash",
+    "toolInput": {"command": "rm -rf node_modules"},
+    "permissionSuggestions": ["Bash(rm *)"]
+  },
+  "timestamp": "2025-12-21T10:00:00Z"
+}
+```
+
+**Permission response** (client → server):
+```json
+{
+  "type": "permission_response",
+  "requestId": "uuid",
+  "allow": true,
+  "updatedInput": {"command": "rm -rf node_modules"}
+}
+```
+
+Or deny:
+```json
+{
+  "type": "permission_response",
+  "requestId": "uuid",
+  "allow": false,
+  "message": "User declined"
+}
+```
+
+**Implementation notes**:
+- Server blocks agent execution until client responds or times out
+- Mimics `CanUseToolCallback` pattern from claude_sdk
+- Timeout should be configurable (default: 60 seconds)
+
+#### 2.5.3 Model Selection Support
+
+Add optional `model` field to message endpoint.
+
+**Endpoint**: `POST /api/v1/networks/:networkId/messages`
+
+**Updated request body**:
+```json
+{
+  "content": "Write hello.dart",
+  "model": "opus"
+}
+```
+
+**Valid model values**:
+- `"sonnet"` (default) - Claude Sonnet
+- `"opus"` - Claude Opus
+
+**Implementation notes**:
+- Model selection applies per-message, allowing users to switch mid-conversation
+- If `model` is omitted, defaults to `"sonnet"`
+- Pass model to ClaudeClient when sending message
+
+#### 2.5.4 Filesystem Browsing API
+
+Add endpoints for browsing and creating directories.
+
+**GET /api/v1/filesystem** - List directory contents
+```
+Query params:
+  parent: string (optional) - path to list children of; null/omitted = server root
+
+Response:
+{
+  "entries": [
+    {"name": "src", "path": "/Users/chris/myproject/src", "isDirectory": true},
+    {"name": "main.dart", "path": "/Users/chris/myproject/main.dart", "isDirectory": false}
+  ]
+}
+```
+
+**POST /api/v1/filesystem** - Create new folder
+```
+Request:
+{
+  "parent": "/Users/chris/projects",
+  "name": "new-project"
+}
+
+Response:
+{
+  "path": "/Users/chris/projects/new-project"
+}
+```
+
+**Security notes**:
+- Server enforces a configurable root directory (configured via server config file)
+- All operations restricted to within the allowed scope
+- Prevents path traversal attacks (e.g., `../../../etc/passwd`)
+
+**Configuration** (in server config file, e.g., `~/.vide/api/config.json`):
+```json
+{
+  "filesystemRoot": "/Users/chris/projects"
+}
+```
+If not configured, defaults to user's home directory.
+
+---
+
 ### Phase 2.8: Run Dart Analysis on REST Server
 **Purpose**: Ensure vide_server compiles and has no errors before testing
 
@@ -867,12 +1019,22 @@ void main(List<String> args) async {
 36. ✅ **Add integration tests**: End-to-end test and duplicate content detection test in `packages/vide_server/test/integration/end_to_end_test.dart`
 37. ⬜ **Verify TUI still works after Phase 2 changes** (pending manual verification)
 
+### Phase 2.5: GUI App Prerequisites (Day 3.5)
+38. ⬜ Implement multiplexed WebSocket at /api/v1/networks/{networkId}/stream
+39. ⬜ Add bidirectional message handling to WebSocket (client can send permission_response)
+40. ⬜ Implement permission_request event when tool needs approval
+41. ⬜ Add model selection support to POST /messages endpoint (Sonnet/Opus)
+42. ⬜ Implement GET /api/v1/filesystem (directory listing)
+43. ⬜ Implement POST /api/v1/filesystem (create folder)
+44. ⬜ Add integration tests for new endpoints
+45. ⬜ Update WebSocketEvent DTO with permission_request type
+
 ### Phase 3: Testing & Documentation (Day 4)
-38. Manual testing with curl and browser (full chat conversation workflow)
-39. Add error handling for common cases (network errors, invalid requests)
-40. Write API documentation with curl examples (packages/vide_server/API.md)
-41. Create simple HTML test client for testing WebSocket streaming
-42. Update root README.md to explain dual-interface architecture
+46. Manual testing with curl and browser (full chat conversation workflow)
+47. Add error handling for common cases (network errors, invalid requests)
+48. Write API documentation with curl examples (packages/vide_server/API.md)
+49. Create simple HTML test client for testing WebSocket streaming
+50. Update root README.md to explain dual-interface architecture
 
 ---
 
@@ -974,9 +1136,21 @@ When deploying beyond localhost (post-MVP):
 ✅ **Permissions auto-approve safe operations, deny dangerous ones**
 ✅ **Bug fixes in vide_core automatically benefit both TUI and REST API** (duplicate content fix in claude_sdk benefits both)
 
+**Phase 2.5 - GUI Prerequisites (NOT STARTED):**
+⬜ **Multiplexed WebSocket at /api/v1/networks/{networkId}/stream** (single stream for all agents)
+⬜ **Bidirectional WebSocket support** (client can send permission_response)
+⬜ **Permission request events** (server sends permission_request, client responds)
+⬜ **Model selection support** (Sonnet/Opus per-message via POST /messages)
+⬜ **Filesystem browsing API** (GET/POST /api/v1/filesystem)
+⬜ **All GUI prerequisites tested and documented**
+
 ---
 
 ## Post-MVP Enhancements
+
+### vide_flutter GUI App
+After completing Phase 2.5 (GUI Prerequisites), the vide_flutter Flutter application can be developed.
+See `specs/flutter-gui-app.md` for the complete GUI specification.
 
 ### Phase 4: Add Security (when deploying beyond localhost)
 - JWT/OAuth authentication
