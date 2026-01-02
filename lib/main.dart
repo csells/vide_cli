@@ -44,15 +44,9 @@ void main(List<String> args, {List<Override> overrides = const []}) async {
   await PostHogService.init(configManager);
   PostHogService.appStarted();
 
-  // Check for and apply pending updates at startup
-  if (AutoUpdateService.hasPendingUpdateSync(configManager)) {
-    final pendingVersion = AutoUpdateService.getPendingUpdateVersion(configManager);
-    if (pendingVersion != null && pendingVersion != videVersion) {
-      // Apply the pending update
-      await AutoUpdateService.applyPendingUpdate(configManager);
-      // Note: The update will take effect on next restart
-    }
-  }
+  // Note: Pending updates are applied by the wrapper script at ~/.local/bin/vide
+  // before launching the actual binary. The version indicator shows "ready" when
+  // an update has been downloaded and will be applied on next launch.
 
   await container.read(agentNetworksStateNotifierProvider.notifier).init();
 
@@ -95,7 +89,7 @@ class VideApp extends StatelessComponent {
         // Main content
         Expanded(
           child: Padding(
-            padding: EdgeInsets.only(left: 1, right: 1),
+            padding: EdgeInsets.only(left: 1, right: 1, top: 1),
             child: WelcomeScope(
               child: SetupScope(child: Navigator(home: NetworksOverviewPage())),
             ),
