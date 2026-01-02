@@ -25,7 +25,9 @@ jobs:
         run: dart pub get
 
       - name: Compile binary
-        run: dart compile exe bin/vide.dart -o vide-macos-arm64
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          dart compile exe bin/vide.dart -o vide-macos-arm64 -DVIDE_VERSION=$VERSION
 
       - name: Codesign binary
         run: codesign --sign - --force vide-macos-arm64
@@ -55,7 +57,9 @@ jobs:
         run: dart pub get
 
       - name: Compile binary
-        run: dart compile exe bin/vide.dart -o vide-macos-x64
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          dart compile exe bin/vide.dart -o vide-macos-x64 -DVIDE_VERSION=$VERSION
 
       - name: Codesign binary
         run: codesign --sign - --force vide-macos-x64
@@ -85,7 +89,9 @@ jobs:
         run: dart pub get
 
       - name: Compile binary
-        run: dart compile exe bin/vide.dart -o vide-linux-x64
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          dart compile exe bin/vide.dart -o vide-linux-x64 -DVIDE_VERSION=$VERSION
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -106,7 +112,10 @@ jobs:
         run: dart pub get
 
       - name: Compile binary
-        run: dart compile exe bin/vide.dart -o vide-windows-x64.exe
+        shell: bash
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          dart compile exe bin/vide.dart -o vide-windows-x64.exe -DVIDE_VERSION=$VERSION
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

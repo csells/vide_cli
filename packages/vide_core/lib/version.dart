@@ -1,8 +1,11 @@
 /// Current version of Vide CLI
 ///
-/// This should match the version in pubspec.yaml.
-/// When releasing, both should be updated together.
-const String videVersion = '0.1.0';
+/// Set at compile time via: dart compile exe -DVIDE_VERSION=x.y.z
+/// Falls back to '0.0.0-dev' for local development builds.
+const String videVersion = String.fromEnvironment(
+  'VIDE_VERSION',
+  defaultValue: '0.0.0-dev',
+);
 
 /// GitHub repository owner
 const String githubOwner = 'Norbert515';

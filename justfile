@@ -12,10 +12,10 @@ install: compile
     cp scripts/vide-wrapper.sh ~/.local/bin/vide
     chmod +x ~/.local/bin/vide
 
-# Compile locally (for testing)
+# Compile locally (for testing) - uses high version to prevent auto-update
 compile:
     dart pub get
-    dart compile exe bin/vide.dart -o vide
+    dart compile exe bin/vide.dart -o vide -DVIDE_VERSION=99.0.0-dev
 
 # Generate bundled devtools code (run after changing runtime_ai_dev_tools)
 generate-devtools:
