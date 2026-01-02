@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
 import 'package:riverpod/riverpod.dart';
@@ -199,6 +200,19 @@ class AutoUpdateService extends StateNotifier<UpdateState> {
         pendingDir.createSync(recursive: true);
       }
 
+      // Fetch expected checksum before downloading
+      final expectedChecksum = await _fetchExpectedChecksum(
+        updateInfo.latestVersion,
+        updateInfo.assetName,
+      );
+      if (expectedChecksum == null) {
+        state = state.copyWith(
+          status: UpdateStatus.error,
+          errorMessage: 'Checksum verification failed: could not fetch SHA256SUMS.txt',
+        );
+        return;
+      }
+
       // Download the binary
       final request = http.Request('GET', Uri.parse(updateInfo.downloadUrl));
       final response = await _httpClient.send(request);
@@ -223,8 +237,18 @@ class AutoUpdateService extends StateNotifier<UpdateState> {
         );
       }
 
-      // Write to file
+      // Combine chunks into bytes
       final bytes = chunks.expand((e) => e).toList();
+
+      // Verify checksum before writing to disk
+      final actualChecksum = _computeSha256(bytes);
+      if (actualChecksum != expectedChecksum) {
+        state = state.copyWith(
+          status: UpdateStatus.error,
+          errorMessage: 'Checksum verification failed: downloaded file does not match expected hash',
+        );
+        return;
+      }
 
       // For macOS/Linux tarballs, we need to extract them
       final downloadPath = path.join(pendingDir.path, updateInfo.assetName);
@@ -268,6 +292,49 @@ class AutoUpdateService extends StateNotifier<UpdateState> {
         errorMessage: 'Download failed: $e',
       );
     }
+  }
+
+  /// Fetch the expected SHA256 checksum for an asset from the release's SHA256SUMS.txt
+  Future<String?> _fetchExpectedChecksum(String version, String assetName) async {
+    final checksumUrl =
+        'https://github.com/$githubOwner/$githubRepo/releases/download/v$version/SHA256SUMS.txt';
+
+    try {
+      final response = await _httpClient.get(
+        Uri.parse(checksumUrl),
+        headers: {'User-Agent': 'Vide-CLI/$videVersion'},
+      );
+
+      if (response.statusCode != 200) {
+        return null;
+      }
+
+      // Parse SHA256SUMS.txt - format is: "hash  filename" (two spaces)
+      final lines = response.body.split('\n');
+      for (final line in lines) {
+        final trimmed = line.trim();
+        if (trimmed.isEmpty) continue;
+
+        // Split on two spaces (sha256sum format)
+        final parts = trimmed.split('  ');
+        if (parts.length >= 2) {
+          final hash = parts[0].trim();
+          final filename = parts[1].trim();
+          if (filename == assetName) {
+            return hash.toLowerCase();
+          }
+        }
+      }
+    } catch (e) {
+      // Network error or parsing error
+    }
+    return null;
+  }
+
+  /// Compute SHA256 hash of bytes and return as lowercase hex string
+  String _computeSha256(List<int> bytes) {
+    final digest = sha256.convert(bytes);
+    return digest.toString();
   }
 
   /// Extract a tarball using tar command

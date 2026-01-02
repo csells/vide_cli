@@ -63,7 +63,9 @@ class _VersionIndicatorState extends State<VersionIndicator> {
     switch (updateState.status) {
       case UpdateStatus.idle:
       case UpdateStatus.upToDate:
-        // Show version number with subtle styling
+      case UpdateStatus.checking:
+      case UpdateStatus.error:
+        // Show version number with subtle styling (don't distract user during checking)
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -71,24 +73,6 @@ class _VersionIndicatorState extends State<VersionIndicator> {
               'v${updateState.currentVersion}',
               style: TextStyle(
                 color: theme.base.onSurface.withOpacity(TextOpacity.tertiary),
-              ),
-            ),
-          ],
-        );
-
-      case UpdateStatus.checking:
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              _spinnerFrames[_spinnerIndex],
-              style: TextStyle(color: theme.base.primary),
-            ),
-            const SizedBox(width: 1),
-            Text(
-              'checking...',
-              style: TextStyle(
-                color: theme.base.onSurface.withOpacity(TextOpacity.secondary),
               ),
             ),
           ],
@@ -122,19 +106,6 @@ class _VersionIndicatorState extends State<VersionIndicator> {
               'v$newVersion ready',
               style: TextStyle(
                 color: theme.base.primary,
-              ),
-            ),
-          ],
-        );
-
-      case UpdateStatus.error:
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'v${updateState.currentVersion}',
-              style: TextStyle(
-                color: theme.base.onSurface.withOpacity(TextOpacity.tertiary),
               ),
             ),
           ],
@@ -179,9 +150,8 @@ class _VersionIndicatorCompactState extends State<VersionIndicatorCompact> {
       case UpdateStatus.idle:
       case UpdateStatus.upToDate:
       case UpdateStatus.error:
-        return 'v${updateState.currentVersion}';
       case UpdateStatus.checking:
-        return '...';
+        return 'v${updateState.currentVersion}';
       case UpdateStatus.downloading:
         return '↓${(updateState.downloadProgress * 100).toInt()}%';
       case UpdateStatus.readyToRestart:
@@ -194,9 +164,8 @@ class _VersionIndicatorCompactState extends State<VersionIndicatorCompact> {
       case UpdateStatus.idle:
       case UpdateStatus.upToDate:
       case UpdateStatus.error:
-        return theme.base.onSurface.withOpacity(TextOpacity.tertiary);
       case UpdateStatus.checking:
-        return theme.base.onSurface.withOpacity(TextOpacity.secondary);
+        return theme.base.onSurface.withOpacity(TextOpacity.tertiary);
       case UpdateStatus.downloading:
         return theme.base.primary;
       case UpdateStatus.readyToRestart:

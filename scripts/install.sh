@@ -55,6 +55,34 @@ get_latest_version() {
         sed -E 's/.*"v([^"]+)".*/\1/'
 }
 
+# Verify SHA256 checksum of a file
+verify_checksum() {
+    local file="$1"
+    local expected_hash="$2"
+
+    # Compute actual hash using shasum (available on macOS and most Linux)
+    local actual_hash=$(shasum -a 256 "$file" | cut -d' ' -f1)
+
+    if [ "$actual_hash" != "$expected_hash" ]; then
+        echo "Checksum verification failed!" >&2
+        echo "  Expected: $expected_hash" >&2
+        echo "  Actual:   $actual_hash" >&2
+        return 1
+    fi
+    return 0
+}
+
+# Fetch expected checksum for a file from SHA256SUMS.txt
+get_expected_checksum() {
+    local version="$1"
+    local filename="$2"
+    local checksum_url="https://github.com/$REPO/releases/download/v$version/SHA256SUMS.txt"
+
+    # Download SHA256SUMS.txt and extract the hash for the target file
+    # Format is: "hash  filename" (two spaces between hash and filename)
+    curl -fsSL "$checksum_url" | grep "  $filename$" | cut -d' ' -f1
+}
+
 # Detect user's shell and return the appropriate config file
 get_shell_config() {
     case "$SHELL" in
@@ -187,16 +215,43 @@ main() {
     local download_url="https://github.com/$REPO/releases/download/v$version/$download_file"
     echo "Downloading from: $download_url"
 
+    # Fetch expected checksum
+    echo "Fetching checksum..."
+    local expected_checksum=$(get_expected_checksum "$version" "$download_file")
+    if [ -z "$expected_checksum" ]; then
+        echo "Failed to fetch checksum for $download_file" >&2
+        exit 1
+    fi
+
     if [ "$is_tarball" = true ]; then
         # Download and extract tarball
         local temp_dir=$(mktemp -d)
         curl -fsSL "$download_url" -o "$temp_dir/$download_file"
+
+        # Verify checksum before extraction
+        echo "Verifying checksum..."
+        if ! verify_checksum "$temp_dir/$download_file" "$expected_checksum"; then
+            rm -rf "$temp_dir"
+            exit 1
+        fi
+
         tar -xzf "$temp_dir/$download_file" -C "$temp_dir"
         mv "$temp_dir/vide" "$VIDE_BIN_DIR/$BINARY_NAME"
         rm -rf "$temp_dir"
     else
-        # Download raw binary
-        curl -fsSL "$download_url" -o "$VIDE_BIN_DIR/$BINARY_NAME"
+        # Download raw binary to temp location first
+        local temp_dir=$(mktemp -d)
+        curl -fsSL "$download_url" -o "$temp_dir/$download_file"
+
+        # Verify checksum before moving to final location
+        echo "Verifying checksum..."
+        if ! verify_checksum "$temp_dir/$download_file" "$expected_checksum"; then
+            rm -rf "$temp_dir"
+            exit 1
+        fi
+
+        mv "$temp_dir/$download_file" "$VIDE_BIN_DIR/$BINARY_NAME"
+        rm -rf "$temp_dir"
     fi
 
     # Make executable
