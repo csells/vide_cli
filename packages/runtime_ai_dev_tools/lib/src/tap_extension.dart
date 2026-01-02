@@ -69,6 +69,9 @@ void registerTapExtension() {
 Future<void> _simulateTap(double x, double y) async {
   print('🎯 [RuntimeAiDevTools] _simulateTap called at ($x, $y)');
 
+  // Clear any existing scroll end indicator from previous gestures
+  TapVisualizationService().clearScrollEndIndicator();
+
   try {
     final binding = WidgetsBinding.instance;
     final offset = Offset(x, y);
