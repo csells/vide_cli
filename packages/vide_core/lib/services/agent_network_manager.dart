@@ -85,7 +85,18 @@ class AgentNetworkManager extends StateNotifier<AgentNetworkState> {
   /// [workingDirectory] - Optional working directory for the network.
   /// If provided, it's atomically set as worktreePath in the network.
   /// If null, effectiveWorkingDirectory falls back to the provider value.
-  Future<AgentNetwork> startNew(Message initialMessage, {String? workingDirectory}) async {
+  ///
+  /// [model] - Optional model override (e.g., 'sonnet', 'opus', 'haiku').
+  /// If provided, overrides the default model for the main agent.
+  ///
+  /// [permissionMode] - Optional permission mode override (e.g., 'accept-edits', 'plan', 'ask', 'deny').
+  /// If provided, overrides the default permission mode for the main agent.
+  Future<AgentNetwork> startNew(
+    Message initialMessage, {
+    String? workingDirectory,
+    String? model,
+    String? permissionMode,
+  }) async {
     final networkId = const Uuid().v4();
     final mainAgentId = const Uuid().v4();
 
@@ -115,10 +126,20 @@ class AgentNetworkManager extends StateNotifier<AgentNetworkState> {
     state = AgentNetworkState(currentNetwork: network);
 
     // Create and add client SYNCHRONOUSLY so UI has it immediately
-    final mainAgentConfig = MainAgentConfig.create();
+    var mainAgentConfig = MainAgentConfig.create();
+
+    // Apply model/permissionMode overrides if provided
+    if (model != null || permissionMode != null) {
+      mainAgentConfig = mainAgentConfig.copyWith(
+        model: model,
+        permissionMode: permissionMode,
+      );
+    }
+
     final mainAgentClaudeClient = _clientFactory.createSync(
       agentId: mainAgentId,
       config: mainAgentConfig,
+      networkId: networkId,
     );
     _ref.read(claudeManagerProvider.notifier).addAgent(mainAgentId, mainAgentClaudeClient);
 
@@ -154,6 +175,7 @@ class AgentNetworkManager extends StateNotifier<AgentNetworkState> {
       final client = _clientFactory.createSync(
         agentId: agentMetadata.id,
         config: config,
+        networkId: updatedNetwork.id,
       );
       _ref.read(claudeManagerProvider.notifier).addAgent(agentMetadata.id, client);
     }
@@ -198,6 +220,7 @@ class AgentNetworkManager extends StateNotifier<AgentNetworkState> {
     final client = await _clientFactory.create(
       agentId: agentId,
       config: config,
+      networkId: network.id,
     );
     _ref.read(claudeManagerProvider.notifier).addAgent(agentId, client);
 

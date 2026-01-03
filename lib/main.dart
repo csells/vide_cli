@@ -16,13 +16,13 @@ import 'package:vide_cli/services/sentry_service.dart';
 /// permission checking via the control protocol.
 final _canUseToolCallbackFactoryOverride = canUseToolCallbackFactoryProvider.overrideWith((ref) {
   final permissionService = ref.read(permissionServiceProvider);
-  return (String cwd) {
+  return (PermissionCallbackContext ctx) {
     return (toolName, input, context) async {
       return permissionService.checkToolPermission(
         toolName,
         input,
         context,
-        cwd: cwd,
+        cwd: ctx.cwd,
       );
     };
   };
