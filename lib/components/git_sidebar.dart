@@ -34,6 +34,7 @@ class NavigableItem {
   final String? status;
   final int fileCount;
   final bool isExpanded;
+  final bool isLastInSection;
 
   const NavigableItem({
     required this.type,
@@ -42,6 +43,7 @@ class NavigableItem {
     this.status,
     this.fileCount = 0,
     this.isExpanded = false,
+    this.isLastInSection = false,
   });
 }
 
@@ -196,13 +198,16 @@ class _GitSidebarState extends State<GitSidebar> {
 
     // 2. File items (if Changes is expanded)
     if (_changesExpanded) {
-      for (final file in changedFiles) {
+      for (var i = 0; i < changedFiles.length; i++) {
+        final file = changedFiles[i];
+        final isLast = i == changedFiles.length - 1;
         items.add(
           NavigableItem(
             type: NavigableItemType.file,
             name: file.path,
             fullPath: file.path,
             status: file.status,
+            isLastInSection: isLast,
           ),
         );
       }
@@ -224,18 +229,27 @@ class _GitSidebarState extends State<GitSidebar> {
           ? branches.length
           : _initialBranchCount.clamp(0, branches.length);
 
+      final hasShowMore =
+          !_showAllBranches && branches.length > _initialBranchCount;
+
       for (var i = 0; i < displayCount; i++) {
+        final isLast = i == displayCount - 1 && !hasShowMore;
         items.add(
-          NavigableItem(type: NavigableItemType.branch, name: branches[i].name),
+          NavigableItem(
+            type: NavigableItemType.branch,
+            name: branches[i].name,
+            isLastInSection: isLast,
+          ),
         );
       }
 
       // Show more option
-      if (!_showAllBranches && branches.length > _initialBranchCount) {
+      if (hasShowMore) {
         items.add(
           NavigableItem(
             type: NavigableItemType.showMoreBranches,
             name: 'Show more (${branches.length - _initialBranchCount})',
+            isLastInSection: true,
           ),
         );
       }
@@ -390,7 +404,7 @@ class _GitSidebarState extends State<GitSidebar> {
       child: Container(
         decoration: BoxDecoration(
           color: theme.base.surface,
-          border: BoxBorder(right: BorderSide(color: theme.base.outline)),
+          border: BoxBorder.all(color: theme.base.outline),
         ),
         child: ClipRect(
           child: SizedBox(
@@ -420,10 +434,12 @@ class _GitSidebarState extends State<GitSidebar> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Header area matching expanded state
+        // Header area matching expanded state (no bottom border)
         Container(
           padding: EdgeInsets.symmetric(horizontal: 1),
-          decoration: BoxDecoration(color: theme.base.outline.withOpacity(0.3)),
+          decoration: BoxDecoration(
+            color: theme.base.outline.withOpacity(0.3),
+          ),
           child: Center(
             child: Text(
               '›',
@@ -465,7 +481,7 @@ class _GitSidebarState extends State<GitSidebar> {
               ),
               child: Row(
                 children: [
-                  Text('', style: TextStyle(color: theme.base.primary)),
+                  Text('', style: TextStyle(color: _vsCodeAccentColor)),
                   SizedBox(width: 1),
                   Expanded(
                     child: Text(
@@ -482,6 +498,8 @@ class _GitSidebarState extends State<GitSidebar> {
                 ],
               ),
             ),
+            // Spacer after header
+            SizedBox(height: 1),
 
             // Scrollable content - all navigable items
             Expanded(
@@ -500,15 +518,15 @@ class _GitSidebarState extends State<GitSidebar> {
               ),
             ),
 
-            // Navigation hint at bottom
+            // Navigation hint at bottom (no border, just padding)
             if (component.focused)
-              Container(
+              Padding(
                 padding: EdgeInsets.symmetric(horizontal: 1),
                 child: Text(
                   '→ to exit',
                   style: TextStyle(
                     color: theme.base.onSurface.withOpacity(
-                      TextOpacity.tertiary,
+                      TextOpacity.disabled,
                     ),
                   ),
                 ),
@@ -630,8 +648,7 @@ class _GitSidebarState extends State<GitSidebar> {
           Text(
             item.isExpanded ? '▾' : '▸',
             style: TextStyle(
-              color: theme.base.onSurface,
-              fontWeight: FontWeight.bold,
+              color: theme.base.onSurface.withOpacity(TextOpacity.secondary),
             ),
           ),
           SizedBox(width: 1),
@@ -642,28 +659,27 @@ class _GitSidebarState extends State<GitSidebar> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          if (item.fileCount > 0) ...[
-            SizedBox(width: 1),
+          // Push badge to the right
+          Expanded(child: SizedBox()),
+          if (item.fileCount > 0)
             Container(
               padding: EdgeInsets.symmetric(horizontal: 1),
               decoration: BoxDecoration(
-                color: theme.base.warning.withOpacity(0.3),
+                color: _vsCodeModifiedColor.withOpacity(0.2),
               ),
               child: Text(
                 '${item.fileCount}',
                 style: TextStyle(
-                  color: theme.base.warning,
-                  fontWeight: FontWeight.bold,
+                  color: _vsCodeModifiedColor,
                 ),
               ),
             ),
-          ],
         ],
       ),
     );
   }
 
-  /// Builds a file row showing status indicator and filename only.
+  /// Builds a file row matching the mockup style exactly.
   Component _buildFileRow(
     NavigableItem item,
     bool isSelected,
@@ -671,24 +687,35 @@ class _GitSidebarState extends State<GitSidebar> {
     VideThemeData theme,
     int availableWidth,
   ) {
-    final statusIndicator = _getStatusIndicator(item.status);
-    final color = _getStatusColor(item.status, theme);
-    // Extract just the filename from the full path
+    final statusDot = _getStatusDot(item.status);
+    final dotColor = _getStatusColor(item.status, theme);
     final fileName = item.name.split('/').last;
-    // Account for " S " prefix (3 chars)
-    final displayName = _ellipsize(fileName, availableWidth - 3);
     final highlight = isSelected || isHovered;
+    // Tree connector: ╰ for last item, │ for others
+    final connector = item.isLastInSection ? '╰' : '│';
 
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 1),
       decoration: highlight
           ? BoxDecoration(
               color: theme.base.primary.withOpacity(isSelected ? 0.3 : 0.15),
             )
           : null,
-      child: Text(
-        ' $statusIndicator $displayName',
-        style: TextStyle(color: color),
+      child: Padding(
+        padding: EdgeInsets.only(left: 2),
+        child: Row(
+          children: [
+            Text(connector, style: TextStyle(color: theme.base.outline)),
+            SizedBox(width: 1),
+            Text(statusDot, style: TextStyle(color: dotColor)),
+            SizedBox(width: 1),
+            Expanded(
+              child: Text(
+                fileName,
+                style: TextStyle(color: theme.base.onSurface),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -705,14 +732,8 @@ class _GitSidebarState extends State<GitSidebar> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Divider
-        Container(
-          padding: EdgeInsets.symmetric(horizontal: 1),
-          child: Text(
-            '─' * (availableWidth > 0 ? availableWidth : 20),
-            style: TextStyle(color: theme.base.outline.withOpacity(0.5)),
-          ),
-        ),
+        // Empty line spacer between sections
+        SizedBox(height: 1),
         // Header
         Container(
           padding: EdgeInsets.symmetric(horizontal: 1),
@@ -728,8 +749,7 @@ class _GitSidebarState extends State<GitSidebar> {
               Text(
                 item.isExpanded ? '▾' : '▸',
                 style: TextStyle(
-                  color: theme.base.onSurface,
-                  fontWeight: FontWeight.bold,
+                  color: theme.base.onSurface.withOpacity(TextOpacity.secondary),
                 ),
               ),
               SizedBox(width: 1),
@@ -758,7 +778,7 @@ class _GitSidebarState extends State<GitSidebar> {
     );
   }
 
-  /// Builds a branch row.
+  /// Builds a branch row with current branch indicator.
   Component _buildBranchRow(
     NavigableItem item,
     bool isSelected,
@@ -776,29 +796,43 @@ class _GitSidebarState extends State<GitSidebar> {
       ),
     );
     final isWorktree = _isWorktreeBranch(item.name);
-    final indicator = branch?.isCurrent == true ? '*' : ' ';
-    final worktreeMarker = isWorktree ? ' W' : '';
-    // Account for "* " prefix (2 chars) and potential " W" suffix (2 chars)
-    final maxBranchNameWidth = availableWidth - 2 - (isWorktree ? 2 : 0);
-    final displayName = _ellipsize(item.name, maxBranchNameWidth);
+    final isCurrent = branch?.isCurrent == true;
+    final currentIndicator = isCurrent ? '●' : ' ';
     final highlight = isSelected || isHovered;
 
+    // Account for "  ● " prefix (4 chars) and potential " W" suffix (2 chars)
+    final maxBranchNameWidth = availableWidth - 4 - (isWorktree ? 2 : 0);
+    final displayName = _ellipsize(item.name, maxBranchNameWidth);
+
     return Container(
-      padding: EdgeInsets.only(left: 2),
       decoration: highlight
           ? BoxDecoration(
               color: theme.base.primary.withOpacity(isSelected ? 0.3 : 0.15),
             )
           : null,
-      child: Text(
-        '$indicator $displayName$worktreeMarker',
-        style: TextStyle(
-          color: branch?.isCurrent == true
-              ? theme.base.primary
-              : theme.base.onSurface.withOpacity(TextOpacity.secondary),
-          fontWeight: branch?.isCurrent == true
-              ? FontWeight.bold
-              : FontWeight.normal,
+      child: Padding(
+        padding: EdgeInsets.only(left: 2),
+        child: Row(
+          children: [
+            Text(
+              currentIndicator,
+              style: TextStyle(
+                color: isCurrent ? theme.base.success : theme.base.outline,
+              ),
+            ),
+            SizedBox(width: 1),
+            Expanded(
+              child: Text(
+                displayName + (isWorktree ? ' W' : ''),
+                style: TextStyle(
+                  color: isCurrent
+                      ? theme.base.primary
+                      : theme.base.onSurface.withOpacity(TextOpacity.secondary),
+                  fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -813,41 +847,58 @@ class _GitSidebarState extends State<GitSidebar> {
     int availableWidth,
   ) {
     final highlight = isSelected || isHovered;
+
     return Container(
-      padding: EdgeInsets.only(left: 3),
       decoration: highlight
           ? BoxDecoration(
               color: theme.base.primary.withOpacity(isSelected ? 0.3 : 0.15),
             )
           : null,
-      child: Text(
-        _ellipsize('─ ${item.name} ─', availableWidth - 1),
-        style: TextStyle(
-          color: theme.base.primary.withOpacity(TextOpacity.secondary),
+      child: Padding(
+        padding: EdgeInsets.only(left: 2),
+        child: Row(
+          children: [
+            Text('…', style: TextStyle(color: theme.base.primary)),
+            SizedBox(width: 1),
+            Expanded(
+              child: Text(
+                _ellipsize(item.name, availableWidth - 5),
+                style: TextStyle(
+                  color: theme.base.primary.withOpacity(TextOpacity.secondary),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  String _getStatusIndicator(String? status) {
+  /// Returns a colored dot indicator for file status.
+  /// ● (filled) for staged/modified, ○ (hollow) for untracked.
+  String _getStatusDot(String? status) {
     switch (status) {
       case 'staged':
-        return 'S';
       case 'modified':
-        return 'M';
+        return '●';
       case 'untracked':
-        return '?';
+        return '○';
       default:
         return ' ';
     }
   }
 
+  /// VS Code-style colors for git status (matching mockup aesthetic).
+  static const _vsCodeStagedColor = Color(0xFF4EC9B0); // Teal/cyan
+  static const _vsCodeModifiedColor = Color(0xFFDCDCAA); // Soft yellow
+  static const _vsCodeAccentColor = Color(0xFFC586C0); // Purple/magenta for git icon
+
   Color _getStatusColor(String? status, VideThemeData theme) {
     switch (status) {
       case 'staged':
-        return theme.base.success;
+        return _vsCodeStagedColor;
       case 'modified':
-        return theme.base.warning;
+        return _vsCodeModifiedColor;
       case 'untracked':
         return theme.base.onSurface.withOpacity(TextOpacity.secondary);
       default:
