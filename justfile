@@ -30,8 +30,11 @@ release:
     #!/usr/bin/env bash
     set -euo pipefail
 
-    # Get the latest tag
-    latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+    # Get the latest tag (by version sort, not by commit ancestry)
+    latest_tag=$(git tag --list 'v*' --sort=-v:refname | head -1)
+    if [[ -z "$latest_tag" ]]; then
+        latest_tag="v0.0.0"
+    fi
     echo "Current version: $latest_tag"
 
     # Parse version numbers (strip 'v' prefix)
