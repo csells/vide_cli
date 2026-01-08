@@ -33,7 +33,9 @@ enum NavigableItemType {
   noChangesPlaceholder, // "No changes" placeholder when worktree is clean
   divider, // Visual separator line
   branchSectionLabel, // "Other Branches"
-  branch,
+  branch, // Expandable branch item
+  branchCheckoutAction, // "Checkout" action under expanded branch
+  branchWorktreeAction, // "Create worktree" action under expanded branch
   showMoreBranches,
 }
 
@@ -113,6 +115,9 @@ class _GitSidebarState extends State<GitSidebar> {
   // Worktree expansion state (per-worktree collapse/expand)
   Map<String, bool> _worktreeExpansionState = {};
   bool _showAllBranches = false;
+
+  // Branch expansion state (which branch in "Other Branches" is expanded to show actions)
+  String? _expandedBranchName;
 
   // Quick action state
   QuickActionState _branchActionState = QuickActionState.collapsed;
@@ -407,11 +412,30 @@ class _GitSidebarState extends State<GitSidebar> {
             : _initialBranchCount.clamp(0, otherBranches.length);
 
         for (var i = 0; i < displayCount; i++) {
+          final branchName = otherBranches[i].name;
+          final isExpanded = _expandedBranchName == branchName;
+
           items.add(NavigableItem(
             type: NavigableItemType.branch,
-            name: otherBranches[i].name,
-            isLastInSection: i == displayCount - 1,
+            name: branchName,
+            isExpanded: isExpanded,
+            isLastInSection: i == displayCount - 1 && !isExpanded,
           ));
+
+          // Add action items if this branch is expanded
+          if (isExpanded) {
+            items.add(NavigableItem(
+              type: NavigableItemType.branchCheckoutAction,
+              name: 'Checkout',
+              fullPath: branchName, // Store branch name for the action
+            ));
+            items.add(NavigableItem(
+              type: NavigableItemType.branchWorktreeAction,
+              name: 'Create worktree',
+              fullPath: branchName, // Store branch name for the action
+              isLastInSection: i == displayCount - 1,
+            ));
+          }
         }
 
         if (!_showAllBranches && otherBranches.length > _initialBranchCount) {
@@ -666,6 +690,32 @@ class _GitSidebarState extends State<GitSidebar> {
     }
   }
 
+  /// Create a worktree from an existing branch.
+  Future<void> _createWorktreeFromBranch(String branchName) async {
+    final client = GitClient(workingDirectory: component.repoPath);
+
+    try {
+      // Create worktree path: ../reponame-branchname
+      final repoName = p.basename(component.repoPath);
+      final worktreePath =
+          p.join(p.dirname(component.repoPath), '$repoName-$branchName');
+
+      // Create worktree with existing branch (don't create new branch)
+      await client.worktreeAdd(
+        worktreePath,
+        branch: branchName,
+        createBranch: false,
+      );
+
+      // Refresh branches/worktrees to reflect the change
+      _cachedBranches = null;
+      _cachedWorktrees = null;
+      await _loadBranchesAndWorktrees();
+    } catch (e) {
+      // TODO: Show error to user
+    }
+  }
+
   /// Merge current branch to main: checkout main, merge feature branch, then checkout back.
   Future<void> _mergeToMain(String featureBranch) async {
     final client = GitClient(workingDirectory: component.repoPath);
@@ -772,8 +822,24 @@ class _GitSidebarState extends State<GitSidebar> {
         component.onSwitchWorktree?.call(item.worktreePath!);
         break;
       case NavigableItemType.branch:
+        // Toggle branch expansion to show/hide actions
+        setState(() {
+          if (_expandedBranchName == item.name) {
+            _expandedBranchName = null; // Collapse if already expanded
+          } else {
+            _expandedBranchName = item.name; // Expand this branch
+          }
+        });
+        break;
+      case NavigableItemType.branchCheckoutAction:
         // Checkout the branch
-        _checkoutBranch(item.name);
+        _checkoutBranch(item.fullPath!);
+        setState(() => _expandedBranchName = null); // Collapse after action
+        break;
+      case NavigableItemType.branchWorktreeAction:
+        // Create a worktree from this branch
+        _createWorktreeFromBranch(item.fullPath!);
+        setState(() => _expandedBranchName = null); // Collapse after action
         break;
       case NavigableItemType.showMoreBranches:
         setState(() => _showAllBranches = true);
@@ -1082,6 +1148,24 @@ class _GitSidebarState extends State<GitSidebar> {
           isHovered,
           theme,
           availableWidth,
+        );
+      case NavigableItemType.branchCheckoutAction:
+        return _buildBranchActionRow(
+          item,
+          isSelected,
+          isHovered,
+          theme,
+          availableWidth,
+          icon: '→',
+        );
+      case NavigableItemType.branchWorktreeAction:
+        return _buildBranchActionRow(
+          item,
+          isSelected,
+          isHovered,
+          theme,
+          availableWidth,
+          icon: '⎇',
         );
       case NavigableItemType.showMoreBranches:
         return _buildShowMoreBranchesRow(
@@ -1559,6 +1643,7 @@ class _GitSidebarState extends State<GitSidebar> {
     final isCurrent = branch?.isCurrent == true;
     final isMainBranch = item.name == 'main' || item.name == 'master';
     final highlight = isSelected || isHovered;
+    final isExpanded = item.isExpanded;
 
     return Container(
       decoration: highlight
@@ -1570,7 +1655,14 @@ class _GitSidebarState extends State<GitSidebar> {
         padding: EdgeInsets.only(left: 2),
         child: Row(
           children: [
-            // Worktree indicator at START
+            // Expand/collapse indicator
+            Text(
+              isExpanded ? '▾' : '▸',
+              style: TextStyle(
+                color: theme.base.onSurface.withOpacity(TextOpacity.secondary),
+              ),
+            ),
+            // Worktree indicator
             if (isWorktree)
               Text(
                 '⎇ ',
@@ -1596,6 +1688,45 @@ class _GitSidebarState extends State<GitSidebar> {
                           ? theme.base.onSurface
                           : theme.base.onSurface.withOpacity(TextOpacity.secondary),
                   fontWeight: (isCurrent || isMainBranch) ? FontWeight.bold : FontWeight.normal,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Builds a branch action row (Checkout, Create worktree).
+  Component _buildBranchActionRow(
+    NavigableItem item,
+    bool isSelected,
+    bool isHovered,
+    VideThemeData theme,
+    int availableWidth, {
+    required String icon,
+  }) {
+    final highlight = isSelected || isHovered;
+
+    return Container(
+      decoration: highlight
+          ? BoxDecoration(
+              color: theme.base.primary.withOpacity(isSelected ? 0.3 : 0.15),
+            )
+          : null,
+      child: Padding(
+        padding: EdgeInsets.only(left: 4), // Extra indent for action items
+        child: Row(
+          children: [
+            Text(icon, style: TextStyle(color: theme.base.primary)),
+            SizedBox(width: 1),
+            Expanded(
+              child: Text(
+                item.name,
+                style: TextStyle(
+                  color: theme.base.primary,
                 ),
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
