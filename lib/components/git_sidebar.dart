@@ -636,6 +636,22 @@ class _GitSidebarState extends State<GitSidebar> {
     });
   }
 
+  /// Checkout a branch from the "Other Branches" list.
+  Future<void> _checkoutBranch(String branchName) async {
+    final client = GitClient(workingDirectory: component.repoPath);
+
+    try {
+      await client.checkout(branchName);
+
+      // Refresh branches/worktrees to reflect the change
+      _cachedBranches = null;
+      _cachedWorktrees = null;
+      await _loadBranchesAndWorktrees();
+    } catch (e) {
+      // TODO: Show error to user (e.g., uncommitted changes)
+    }
+  }
+
   /// Activates an item (used for both keyboard and mouse click).
   void _activateItem(NavigableItem item, BuildContext context) {
     switch (item.type) {
@@ -709,7 +725,8 @@ class _GitSidebarState extends State<GitSidebar> {
         component.onSwitchWorktree?.call(item.worktreePath!);
         break;
       case NavigableItemType.branch:
-        // TODO: Could checkout branch or show branch details
+        // Checkout the branch
+        _checkoutBranch(item.name);
         break;
       case NavigableItemType.showMoreBranches:
         setState(() => _showAllBranches = true);
