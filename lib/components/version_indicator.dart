@@ -112,7 +112,7 @@ class _VersionIndicatorState extends State<VersionIndicator> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'v$newVersion ready',
+              'v$newVersion ready - restart to apply',
               style: TextStyle(color: theme.base.primary),
             ),
           ],
@@ -163,7 +163,7 @@ class _VersionIndicatorCompactState extends State<VersionIndicatorCompact> {
       case UpdateStatus.downloading:
         return '↓${(updateState.downloadProgress * 100).toInt()}%';
       case UpdateStatus.readyToRestart:
-        return '★v${updateState.updateInfo?.latestVersion ?? '?'}';
+        return '↻v${updateState.updateInfo?.latestVersion ?? '?'}';
     }
   }
 
