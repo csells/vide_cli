@@ -28,6 +28,7 @@ enum NavigableItemType {
   changesSectionLabel, // "Changes" label (not collapsible)
   file,
   commitPushAction, // "Commit & push" action for branches with changes
+  noChangesPlaceholder, // "No changes" placeholder when worktree is clean
   divider, // Visual separator line
   branchSectionLabel, // "Other Branches"
   branch,
@@ -431,16 +432,24 @@ class _GitSidebarState extends State<GitSidebar> {
         worktreePath: path,
         isLastInSection: false,
       ));
-    }
 
-    for (var i = 0; i < changedFiles.length; i++) {
+      for (var i = 0; i < changedFiles.length; i++) {
+        items.add(NavigableItem(
+          type: NavigableItemType.file,
+          name: changedFiles[i].path,
+          fullPath: changedFiles[i].path,
+          status: changedFiles[i].status,
+          worktreePath: path,
+          isLastInSection: i == changedFiles.length - 1,
+        ));
+      }
+    } else {
+      // Show "No changes" placeholder when worktree is clean
       items.add(NavigableItem(
-        type: NavigableItemType.file,
-        name: changedFiles[i].path,
-        fullPath: changedFiles[i].path,
-        status: changedFiles[i].status,
+        type: NavigableItemType.noChangesPlaceholder,
+        name: 'No changes',
         worktreePath: path,
-        isLastInSection: i == changedFiles.length - 1,
+        isLastInSection: true,
       ));
     }
 
@@ -642,7 +651,8 @@ class _GitSidebarState extends State<GitSidebar> {
       case NavigableItemType.changesSectionLabel:
       case NavigableItemType.branchSectionLabel:
       case NavigableItemType.divider:
-        // Labels and dividers are not activatable
+      case NavigableItemType.noChangesPlaceholder:
+        // Labels, dividers, and placeholders are not activatable
         break;
       case NavigableItemType.file:
         final basePath = item.worktreePath ?? component.repoPath;
@@ -948,6 +958,14 @@ class _GitSidebarState extends State<GitSidebar> {
         );
       case NavigableItemType.commitPushAction:
         return _buildCommitPushActionRow(
+          item,
+          isSelected,
+          isHovered,
+          theme,
+          availableWidth,
+        );
+      case NavigableItemType.noChangesPlaceholder:
+        return _buildNoChangesPlaceholderRow(
           item,
           isSelected,
           isHovered,
@@ -1286,6 +1304,35 @@ class _GitSidebarState extends State<GitSidebar> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Builds a "No changes" placeholder row.
+  Component _buildNoChangesPlaceholderRow(
+    NavigableItem item,
+    bool isSelected,
+    bool isHovered,
+    VideThemeData theme,
+    int availableWidth,
+  ) {
+    final highlight = isSelected || isHovered;
+
+    return Container(
+      decoration: highlight
+          ? BoxDecoration(
+              color: theme.base.primary.withOpacity(isSelected ? 0.3 : 0.15),
+            )
+          : null,
+      child: Padding(
+        padding: EdgeInsets.only(left: 2),
+        child: Text(
+          item.name,
+          style: TextStyle(
+            color: theme.base.onSurface.withOpacity(TextOpacity.disabled),
+            fontStyle: FontStyle.italic,
+          ),
         ),
       ),
     );
