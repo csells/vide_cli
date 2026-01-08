@@ -126,8 +126,9 @@ class _NetworksOverviewPageState extends State<NetworksOverviewPage> {
   Component build(BuildContext context) {
     final theme = VideTheme.of(context);
 
-    // Get current directory path (abbreviated)
-    final currentDir = Directory.current.path;
+    // Get current directory path (abbreviated) - use currentRepoPathProvider to
+    // react to worktree switching
+    final currentDir = context.watch(currentRepoPathProvider);
     final abbreviatedPath = _abbreviatePath(currentDir);
 
     // Check if IDE mode is enabled

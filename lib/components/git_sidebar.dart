@@ -160,6 +160,14 @@ class _GitSidebarState extends State<GitSidebar> {
     if (component.focused && !old.focused) {
       _selectCurrentWorktree();
     }
+    // When repoPath changes (worktree switch), clear cache and reload
+    if (component.repoPath != old.repoPath) {
+      _cachedBranches = null;
+      _cachedWorktrees = null;
+      _branchesLoading = false;
+      // Reset selection to current worktree
+      _selectedIndex = 2;
+    }
   }
 
   /// Select the current worktree in the navigation list.
@@ -832,47 +840,16 @@ class _GitSidebarState extends State<GitSidebar> {
     dynamic gitStatus,
     List<NavigableItem> items,
   ) {
-    final isWorktreeAsync =
-        context.watch(isWorktreeProvider(component.repoPath));
-    final isWorktree = isWorktreeAsync.valueOrNull ?? false;
-
     return LayoutBuilder(
       builder: (context, constraints) {
         // Available width for content (subtract padding)
         final availableWidth =
             constraints.maxWidth.toInt() - 2; // 1 padding on each side
 
-        // Get worktree name from path if in a worktree
-        final worktreeName = isWorktree ? p.basename(component.repoPath) : null;
-
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Worktree indicator (shown only when in a worktree)
-            if (isWorktree && worktreeName != null)
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 1),
-                decoration: BoxDecoration(
-                  color: theme.base.primary.withOpacity(0.15),
-                ),
-                child: Row(
-                  children: [
-                    Text('⎇', style: TextStyle(color: theme.base.primary)),
-                    SizedBox(width: 1),
-                    Expanded(
-                      child: Text(
-                        worktreeName,
-                        style: TextStyle(
-                          color: theme.base.primary,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            // All navigable items in ListView (including main branch header)
+            // All navigable items in ListView (including branch headers)
             Expanded(
               child: ListView(
                 controller: _scrollController,
