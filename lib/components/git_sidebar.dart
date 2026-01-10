@@ -767,6 +767,9 @@ class _GitSidebarState extends State<GitSidebar> {
           createBranch: true,
           baseBranch: baseBranch,
         );
+
+        // Auto-switch to the new worktree
+        component.onSwitchWorktree?.call(worktreePath);
       }
 
       // Refresh branches/worktrees
@@ -818,6 +821,9 @@ class _GitSidebarState extends State<GitSidebar> {
         branch: branchName,
         createBranch: false,
       );
+
+      // Auto-switch to the new worktree
+      component.onSwitchWorktree?.call(worktreePath);
 
       // Refresh branches/worktrees to reflect the change
       _cachedBranches = null;
